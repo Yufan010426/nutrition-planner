@@ -1,0 +1,21 @@
+[
+  { "id": "r1",  "name": "Oatmeal with Berries",              "kcal": 350, "protein": 12, "fat": 8,  "carbs": 60 },
+  { "id": "r2",  "name": "Veggie Omelet & Whole-grain Toast", "kcal": 400, "protein": 22, "fat": 18, "carbs": 35 },
+  { "id": "r3",  "name": "Protein Smoothie (Banana & Milk)",  "kcal": 300, "protein": 25, "fat": 7,  "carbs": 35 },
+  { "id": "r4",  "name": "Avocado Toast with Egg",            "kcal": 380, "protein": 16, "fat": 20, "carbs": 32 },
+
+  { "id": "r5",  "name": "Grilled Chicken Salad",             "kcal": 500, "protein": 40, "fat": 15, "carbs": 45 },
+  { "id": "r6",  "name": "Turkey Wrap (Whole-grain)",         "kcal": 550, "protein": 35, "fat": 18, "carbs": 60 },
+  { "id": "r7",  "name": "Tofu Buddha Bowl",                  "kcal": 520, "protein": 28, "fat": 18, "carbs": 70 },
+  { "id": "r8",  "name": "Salmon Sushi Bowl",                 "kcal": 650, "protein": 40, "fat": 22, "carbs": 70 },
+
+  { "id": "r9",  "name": "Salmon with Rice & Veggies",        "kcal": 700, "protein": 50, "fat": 25, "carbs": 70 },
+  { "id": "r10", "name": "Beef Stir-fry with Rice",           "kcal": 750, "protein": 45, "fat": 28, "carbs": 80 },
+  { "id": "r11", "name": "Chickpea Curry with Rice",          "kcal": 680, "protein": 25, "fat": 22, "carbs": 95 },
+  { "id": "r12", "name": "Pasta Bolognese",                   "kcal": 720, "protein": 38, "fat": 22, "carbs": 95 },
+
+  { "id": "r13", "name": "Greek Yogurt with Nuts",            "kcal": 250, "protein": 15, "fat": 10, "carbs": 20 },
+  { "id": "r14", "name": "Apple with Peanut Butter",          "kcal": 300, "protein": 9,  "fat": 16, "carbs": 28 },
+  { "id": "r15", "name": "Hummus with Carrot Sticks",         "kcal": 220, "protein": 7,  "fat": 10, "carbs": 28 },
+  { "id": "r16", "name": "Chocolate Protein Bar",             "kcal": 230, "protein": 20, "fat": 7,  "carbs": 22 }
+]

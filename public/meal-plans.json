@@ -1,0 +1,68 @@
+[
+  {
+    "id": "plan1",
+    "title": "Lean & Light",
+    "meals": [
+      { "type": "breakfast", "recipeId": "r3" },
+      { "type": "lunch",     "recipeId": "r5" },
+      { "type": "dinner",    "recipeId": "r11" },
+      { "type": "snack",     "recipeId": "r14" }
+    ],
+    "totals": { "kcal": 1780, "protein": 99, "fat": 60, "carbs": 203 }
+  },
+  {
+    "id": "plan2",
+    "title": "Balanced Day",
+    "meals": [
+      { "type": "breakfast", "recipeId": "r1" },
+      { "type": "lunch",     "recipeId": "r6" },
+      { "type": "dinner",    "recipeId": "r9" },
+      { "type": "snack",     "recipeId": "r13" }
+    ],
+    "totals": { "kcal": 1850, "protein": 112, "fat": 61, "carbs": 210 }
+  },
+  {
+    "id": "plan3",
+    "title": "High Protein Focus",
+    "meals": [
+      { "type": "breakfast", "recipeId": "r2" },
+      { "type": "lunch",     "recipeId": "r6" },
+      { "type": "dinner",    "recipeId": "r10" },
+      { "type": "snack",     "recipeId": "r16" }
+    ],
+    "totals": { "kcal": 1930, "protein": 122, "fat": 71, "carbs": 197 }
+  },
+  {
+    "id": "plan4",
+    "title": "Plant Powered",
+    "meals": [
+      { "type": "breakfast", "recipeId": "r4" },
+      { "type": "lunch",     "recipeId": "r7" },
+      { "type": "dinner",    "recipeId": "r11" },
+      { "type": "snack",     "recipeId": "r15" }
+    ],
+    "totals": { "kcal": 1800, "protein": 76, "fat": 70, "carbs": 225 }
+  },
+  {
+    "id": "plan5",
+    "title": "Fuel & Build",
+    "meals": [
+      { "type": "breakfast", "recipeId": "r3" },
+      { "type": "lunch",     "recipeId": "r8" },
+      { "type": "dinner",    "recipeId": "r10" },
+      { "type": "snack",     "recipeId": "r13" }
+    ],
+    "totals": { "kcal": 1950, "protein": 125, "fat": 67, "carbs": 205 }
+  },
+  {
+    "id": "plan6",
+    "title": "Calorie Plus",
+    "meals": [
+      { "type": "breakfast", "recipeId": "r2" },
+      { "type": "lunch",     "recipeId": "r8" },
+      { "type": "dinner",    "recipeId": "r12" },
+      { "type": "snack",     "recipeId": "r14" }
+    ],
+    "totals": { "kcal": 2070, "protein": 109, "fat": 78, "carbs": 228 }
+  }
+]

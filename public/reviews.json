@@ -1,0 +1,6 @@
+[
+  { "id": "r001", "recipeId": "oats", "userId": "u1", "score": 5, "comment": "Super quick and filling!", "date": "2025-07-12" },
+  { "id": "r002", "recipeId": "oats", "userId": "admin1", "score": 4, "comment": "Nice with blueberries.", "date": "2025-07-13" },
+  { "id": "r003", "recipeId": "heart-salad", "userId": "u1", "score": 5, "comment": "Fresh and light.", "date": "2025-07-15" },
+  { "id": "r004", "recipeId": "kid-meal", "userId": "u1", "score": 4, "comment": "Kids loved it.", "date": "2025-07-18" }
+]
