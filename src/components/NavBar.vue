@@ -1,6 +1,5 @@
 <template>
   <header class="nav">
-    <!-- 左侧：汉堡按钮 -->
     <div class="left">
       <button
         class="burger"
@@ -17,19 +16,12 @@
       <RouterLink to="/" class="brand">Nutrition</RouterLink>
     </div>
 
-    <!-- 下拉菜单 -->
-    <div
-      class="menu"
-      :class="{ open }"
-      ref="menuRef"
-      @keydown.esc.prevent="close"
-    >
+    <div class="menu" :class="{ open }" ref="menuRef" @keydown.esc.prevent="close">
       <RouterLink to="/guide" class="item" @click="close">Guide</RouterLink>
       <RouterLink to="/planner" class="item" @click="close">Planner</RouterLink>
       <RouterLink to="/recipes" class="item" @click="close">Recipes</RouterLink>
     </div>
 
-    <!-- 右侧用户区 -->
     <div class="auth">
       <template v-if="!auth.user">
         <RouterLink to="/login" class="btn-outline">Login</RouterLink>
@@ -56,13 +48,13 @@ const open = ref(false)
 const menuRef = ref(null)
 const btnRef = ref(null)
 
-function toggle () {
+function toggle() {
   open.value = !open.value
 }
-function close () {
+function close() {
   open.value = false
 }
-function onClickOutside (e) {
+function onClickOutside(e) {
   const m = menuRef.value
   const b = btnRef.value
   if (!m || !b) return
@@ -76,7 +68,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('click', onClickOutside)
 })
 
-function logout () {
+function logout() {
   auth.logout()
   router.push('/login')
 }
@@ -118,9 +110,11 @@ function logout () {
   place-items: center;
   gap: 4px;
   padding: 4px 0;
-  transition: .2s;
+  transition: 0.2s;
 }
-.burger:hover { background: #ecf8f1; }
+.burger:hover {
+  background: #ecf8f1;
+}
 .burger .line {
   width: 18px;
   height: 2px;
@@ -133,7 +127,7 @@ function logout () {
   position: absolute;
   top: 60px;
   left: 16px;
-  transform: scale(.98);
+  transform: scale(0.98);
   transform-origin: top left;
   opacity: 0;
   pointer-events: none;
@@ -141,9 +135,9 @@ function logout () {
   background: #fff;
   border: 1px solid #e6e6e6;
   border-radius: 12px;
-  box-shadow: 0 12px 30px rgba(0,0,0,.12);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
   padding: 8px;
-  transition: .16s ease;
+  transition: 0.16s ease;
   z-index: 20;
 }
 .menu.open {
@@ -165,18 +159,39 @@ function logout () {
 }
 
 /* 右侧按钮 */
-.auth { display: flex; gap: 12px; align-items: center; }
-.btn, .btn-outline {
+.auth {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.btn,
+.btn-outline {
   padding: 6px 14px;
   border-radius: 8px;
   font-weight: 600;
   cursor: pointer;
   text-decoration: none;
 }
-.btn { background: #4caf7a; color: #fff; border: 0; }
-.btn:hover { background: #388e5a; }
-.btn-outline { background: #fff; color: #4caf7a; border: 2px solid #4caf7a; }
-.btn-outline:hover { background: #4caf7a; color: #fff; }
+.btn {
+  background: #4caf7a;
+  color: #fff;
+  border: 0;
+}
+.btn:hover {
+  background: #388e5a;
+}
+.btn-outline {
+  background: #fff;
+  color: #4caf7a;
+  border: 2px solid #4caf7a;
+}
+.btn-outline:hover {
+  background: #4caf7a;
+  color: #fff;
+}
 
-.hi { color: #333; font-weight: 600; }
+.hi {
+  color: #333;
+  font-weight: 600;
+}
 </style>

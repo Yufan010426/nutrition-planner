@@ -13,16 +13,16 @@
   <section class="about">
     <h2>Why Nutrition Matters</h2>
     <p>
-      At <strong>Nutrition Planner</strong>, we believe that healthy eating should be simple, 
-      personalized, and enjoyable. Our mission is to provide you with smart daily meal 
-      recommendations tailored to your age, body, and lifestyle, so you can fuel your day 
-      with confidence and energy. 🌱
+      At <strong>Nutrition Planner</strong>, we believe that healthy eating should be simple,
+      personalized, and enjoyable. Our mission is to provide you with smart daily meal
+      recommendations tailored to your age, body, and lifestyle, so you can fuel your day with
+      confidence and energy. 🌱
     </p>
     <p>
-      Balanced nutrition is the foundation of good health — it helps boost your energy, 
-      supports your immune system, and even improves focus and mood. Whether your goal is 
-      to stay fit, build strength, or simply feel your best, a thoughtful meal plan is the 
-      key to long-term wellness. 💪
+      Balanced nutrition is the foundation of good health — it helps boost your energy, supports
+      your immune system, and even improves focus and mood. Whether your goal is to stay fit, build
+      strength, or simply feel your best, a thoughtful meal plan is the key to long-term wellness.
+      💪
     </p>
   </section>
 </template>
@@ -33,8 +33,8 @@
   align-items: flex-start;
   justify-content: center;
   text-align: center;
-  min-height: 30vh; 
-  padding-top: 60px; 
+  min-height: 30vh;
+  padding-top: 60px;
 }
 
 .content {
