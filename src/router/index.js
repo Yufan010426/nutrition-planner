@@ -5,8 +5,6 @@ import Planner from '@/views/Planner.vue'
 import Recipes from '@/views/Recipes.vue'
 import Login from '@/views/Login.vue'
 import Register from '@/views/Register.vue'
-
-// 新增的两个页面
 import FirebaseSigninView from '@/views/FirebaseSigninView.vue'
 import FirebaseRegisterView from '@/views/FirebaseRegisterView.vue'
 
