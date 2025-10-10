@@ -18,6 +18,10 @@
       <RouterLink to="/guide" class="item">Guide</RouterLink>
       <RouterLink to="/planner" class="item">Planner</RouterLink>
       <RouterLink to="/recipes" class="item">Recipes</RouterLink>
+      <RouterLink to="/getMealCount" class="item">Meal Count</RouterLink>
+      <RouterLink to="/weather" class="item">Weather</RouterLink>
+      
+
     </div>
 
     <div class="auth">

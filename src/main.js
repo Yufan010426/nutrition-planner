@@ -18,6 +18,8 @@ export function secureLoadScript(src) {
     document.head.appendChild(el)
   })
 }
+console.log('ENV =', import.meta.env); 
+console.log('API_BASE =', import.meta.env.VITE_API_BASE);
 
 const app = createApp(App)
 
