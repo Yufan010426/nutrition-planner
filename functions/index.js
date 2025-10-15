@@ -4,60 +4,67 @@ const logger = require("firebase-functions/logger");
 const axios = require("axios");
 const cors = require("cors")({ origin: true });
 
-let SPOON_KEY = process.env.SPOON_KEY;
-if (!SPOON_KEY) {
-  try {
-    const v1 = require("firebase-functions");
-    SPOON_KEY = v1.config()?.spoon?.key;
-  } catch (_) {}
-}
+exports.api = onRequest(
+  // 一定要声明 secrets
+  { region: "us-central1", secrets: ["SPOON_KEY"] },
+  async (req, res) => {
+    await new Promise((r) => cors(req, res, r));
+    if (req.method === "OPTIONS") return res.status(204).send("");
 
-exports.api = onRequest({ region: "us-central1" }, async (req, res) => {
-  await new Promise((resolve) => cors(req, res, resolve));
-  if (req.method === "OPTIONS") return res.status(204).send("");
+    const path = String(req.query.path || "");
 
-  try {
-    const path = req.query.path || "";
-
-    if (path === "mealplan") {
-      const targetCalories = Number(req.query.targetCalories || 2000);
-      const diet = req.query.diet || "";
-      const exclude = req.query.exclude || "";
-
-      const { data } = await axios.get(
-        "https://api.spoonacular.com/mealplanner/generate",
-        {
-          params: {
-            timeFrame: "day",
-            targetCalories,
-            diet: diet || undefined,
-            exclude: exclude || undefined,
-            apiKey: SPOON_KEY,
-          },
-        }
-      );
-      return res.json(data);
+    // 临时调试端点：确认云端是否拿到了 Key（不会泄露完整 key）
+    if (path === "debug") {
+      const k = process.env.SPOON_KEY || "";
+      return res.json({
+        hasKey: Boolean(k),
+        len: k.length,
+        prefix: k.slice(0, 4),
+      });
     }
 
-    if (path === "recipeInfo") {
-      const id = req.query.id;
-      if (!id) return res.status(400).json({ error: "missing id" });
+    try {
+      if (path === "mealplan") {
+        const targetCalories = Number(req.query.targetCalories || 2000);
+        const diet = req.query.diet || "";
+        const exclude = req.query.exclude || "";
 
-      const { data } = await axios.get(
-        `https://api.spoonacular.com/recipes/${id}/information`,
-        {
-          params: {
-            includeNutrition: true,
-            apiKey: SPOON_KEY,
-          },
-        }
-      );
-      return res.json(data);
+        const { data } = await axios.get(
+          "https://api.spoonacular.com/mealplanner/generate",
+          {
+            params: {
+              timeFrame: "day",
+              targetCalories,
+              diet: diet || undefined,
+              exclude: exclude || undefined,
+              apiKey: process.env.SPOON_KEY, // 关键：用 Secret
+            },
+          }
+        );
+        return res.json(data);
+      }
+
+      if (path === "recipeInfo") {
+        const id = req.query.id;
+        if (!id) return res.status(400).json({ error: "missing id" });
+        const { data } = await axios.get(
+          `https://api.spoonacular.com/recipes/${id}/information`,
+          {
+            params: { includeNutrition: true, apiKey: process.env.SPOON_KEY },
+          }
+        );
+        return res.json(data);
+      }
+
+      return res.status(404).json({ error: "unknown path" });
+    } catch (e) {
+      const code = e?.response?.status || 500;
+      const payload =
+        typeof e?.response?.data === "object"
+          ? e.response.data
+          : { error: e?.message || "internal error" };
+      logger.error("Proxy error", code, payload);
+      return res.status(code).json(payload);
     }
-
-    return res.status(404).json({ error: "unknown path" });
-  } catch (e) {
-    logger.error(e);
-    return res.status(500).json({ error: e?.message || "internal error" });
   }
-});
+);
