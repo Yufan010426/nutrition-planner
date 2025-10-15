@@ -1,75 +1,63 @@
-import { onRequest } from "firebase-functions/v2/https";
-import express from "express";
-import cors from "cors";
-import admin from "firebase-admin";
+// functions/index.js
+const { onRequest } = require("firebase-functions/v2/https");
+const logger = require("firebase-functions/logger");
+const axios = require("axios");
+const cors = require("cors")({ origin: true });
 
-try { admin.app(); } catch { admin.initializeApp(); }
-const db = admin.firestore();
-
-const app = express();
-app.use(cors({ origin: true }));
-app.use(express.json());
-
-app.get("/health", (_req, res) => {
-  res.json({ ok: true, time: new Date().toISOString() });
-});
-
-app.get("/countMeals", async (req, res) => {
+let SPOON_KEY = process.env.SPOON_KEY;
+if (!SPOON_KEY) {
   try {
-    const uid = String(req.query.uid || "").trim();
-    if (!uid) return res.status(400).json({ error: "uid is required" });
-    const snap = await db.collection("meals").where("uid", "==", uid).get();
-    res.json({ count: snap.size });
-  } catch (e) {
-    console.error("countMeals error:", e);
-    res.status(500).json({ error: "internal" });
-  }
-});
+    const v1 = require("firebase-functions");
+    SPOON_KEY = v1.config()?.spoon?.key;
+  } catch (_) {}
+}
 
-app.get("/mealCount", async (req, res) => {
-  try {
-    const uid = req.query.uid ? String(req.query.uid).trim() : null;
-    const col = db.collection("meals");
-    const snap = uid ? await col.where("uid", "==", uid).get() : await col.get();
-    res.json({ count: snap.size });
-  } catch (e) {
-    console.error("mealCount error:", e);
-    res.status(500).json({ error: "internal" });
-  }
-});
+exports.api = onRequest({ region: "us-central1" }, async (req, res) => {
+  await new Promise((resolve) => cors(req, res, resolve));
+  if (req.method === "OPTIONS") return res.status(204).send("");
 
-app.post("/addMeal", async (req, res) => {
   try {
-    const { uid, name, category, calories } = req.body || {};
-    if (!uid || !name || !category) {
-      return res.status(400).json({ error: "uid, name and category are required" });
+    const path = req.query.path || "";
+
+    if (path === "mealplan") {
+      const targetCalories = Number(req.query.targetCalories || 2000);
+      const diet = req.query.diet || "";
+      const exclude = req.query.exclude || "";
+
+      const { data } = await axios.get(
+        "https://api.spoonacular.com/mealplanner/generate",
+        {
+          params: {
+            timeFrame: "day",
+            targetCalories,
+            diet: diet || undefined,
+            exclude: exclude || undefined,
+            apiKey: SPOON_KEY,
+          },
+        }
+      );
+      return res.json(data);
     }
-    const doc = {
-      uid: String(uid).trim(),
-      name: String(name).toUpperCase(),
-      category: String(category).toUpperCase(),
-      calories:
-        typeof calories === "number"
-          ? calories
-          : calories != null && !Number.isNaN(Number(calories))
-          ? Number(calories)
-          : null,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    };
-    const ref = await db.collection("meals").add(doc);
-    res.json({ id: ref.id, saved: doc });
+
+    if (path === "recipeInfo") {
+      const id = req.query.id;
+      if (!id) return res.status(400).json({ error: "missing id" });
+
+      const { data } = await axios.get(
+        `https://api.spoonacular.com/recipes/${id}/information`,
+        {
+          params: {
+            includeNutrition: true,
+            apiKey: SPOON_KEY,
+          },
+        }
+      );
+      return res.json(data);
+    }
+
+    return res.status(404).json({ error: "unknown path" });
   } catch (e) {
-    console.error("addMeal error:", e);
-    res.status(500).json({ error: "internal" });
+    logger.error(e);
+    return res.status(500).json({ error: e?.message || "internal error" });
   }
 });
-
-export const api = onRequest(
-  {
-    region: "australia-southeast2",
-    timeoutSeconds: 60,
-    cors: false, 
-    memory: "256MiB",
-  },
-  app
-);

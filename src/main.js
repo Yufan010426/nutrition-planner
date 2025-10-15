@@ -5,27 +5,14 @@ import router from './router'
 import App from './App.vue'
 import { useAuth } from '@/stores/auth'
 
-export function secureLoadScript(src) {
-  return new Promise((resolve, reject) => {
-    const el = document.createElement('script')
-    const nonceMeta = document.querySelector('meta[name="csp-nonce"]')
-    const nonce = nonceMeta?.getAttribute('content')
-    if (nonce) el.setAttribute('nonce', nonce)
-    el.async = true
-    el.src = src
-    el.onload = resolve
-    el.onerror = reject
-    document.head.appendChild(el)
-  })
-}
-console.log('ENV =', import.meta.env); 
-console.log('API_BASE =', import.meta.env.VITE_API_BASE);
+console.log('ENV =', import.meta.env)
+console.log('API_BASE =', import.meta.env.VITE_API_BASE)
 
 const app = createApp(App)
-
 app.use(createPinia())
 app.use(router)
 
-useAuth().bootstrap()
-
-app.mount('#app')
+const authStore = useAuth()
+authStore.bootstrap().finally(() => {
+  app.mount('#app')
+})

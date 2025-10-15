@@ -20,13 +20,11 @@
       <RouterLink to="/recipes" class="item">Recipes</RouterLink>
       <RouterLink to="/getMealCount" class="item">Meal Count</RouterLink>
       <RouterLink to="/weather" class="item">Weather</RouterLink>
-      
-
     </div>
 
     <div class="auth">
       <template v-if="!auth.user">
-        <RouterLink to="/firelogin" class="btn-outline">Login</RouterLink>
+        <RouterLink to="/fire-signin" class="btn-outline">Login</RouterLink>
         <RouterLink to="/fire-register" class="btn">Register</RouterLink>
       </template>
 
