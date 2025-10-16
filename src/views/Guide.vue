@@ -50,7 +50,6 @@
         </select>
       </label>
 
-      <!-- 可选：偏好与排除项（会透传给后端 Cloud Function -> Spoonacular） -->
       <label>
         Diet preference (optional):
         <select v-model="diet">
@@ -123,26 +122,17 @@
 <script setup>
 import { ref } from 'vue'
 import { calcTargets } from '@/stores/targets.js'
-import { genDayPlan, getRecipeInfo } from '@/services/spoonacular.js' // 只走你的 Cloud Function
+import { generateMealPlan, getRecipeInfo } from '@/services/spoonacular.js'
 
-/** ===== form state ===== */
-const sex = ref('')
-const age = ref()
-const height = ref()
-const weight = ref()
-const activity = ref('')
-const goal = ref('')
+const sex = ref(''); const age = ref(); const height = ref(); const weight = ref()
+const activity = ref(''); const goal = ref('')
+const diet = ref(''); const exclude = ref('')
 
-const diet = ref('')      // 可选：饮食偏好
-const exclude = ref('')   // 可选：排除食材（逗号分隔）
-
-/** ===== outputs ===== */
-const targets = ref(null)              // { kcal, protein, fat, carbs }
-const bestPlan = ref(null)             // { title, meals:[{id,type,name,kcal,protein,fat,carbs}], totals:{} }
+const targets = ref(null)
+const bestPlan = ref(null)
 const loading = ref(false)
 const error = ref('')
 
-/** ===== helpers ===== */
 function extractMacros(info) {
   const arr = info?.nutrition?.nutrients || []
   const find = (name) => arr.find((n) => n.name.toLowerCase() === name.toLowerCase())
@@ -150,85 +140,46 @@ function extractMacros(info) {
   const pro = find('Protein')?.amount ?? 0
   const fat = find('Fat')?.amount ?? 0
   const car = find('Carbohydrates')?.amount ?? 0
-  return {
-    kcal: Math.round(cal),
-    protein: Math.round(pro),
-    fat: Math.round(fat),
-    carbs: Math.round(car),
-  }
+  return { kcal: Math.round(cal), protein: Math.round(pro), fat: Math.round(fat), carbs: Math.round(car) }
 }
 const toN = (v) => (typeof v === 'number' ? v : parseFloat(v) || 0)
 function sumTotals(items) {
   const t = { kcal: 0, protein: 0, fat: 0, carbs: 0 }
-  for (const r of items) {
-    t.kcal += toN(r.kcal)
-    t.protein += toN(r.protein)
-    t.fat += toN(r.fat)
-    t.carbs += toN(r.carbs)
-  }
-  t.kcal = Math.round(t.kcal)
-  t.protein = Math.round(t.protein)
-  t.fat = Math.round(t.fat)
-  t.carbs = Math.round(t.carbs)
+  for (const r of items) { t.kcal += toN(r.kcal); t.protein += toN(r.protein); t.fat += toN(r.fat); t.carbs += toN(r.carbs) }
+  t.kcal = Math.round(t.kcal); t.protein = Math.round(t.protein); t.fat = Math.round(t.fat); t.carbs = Math.round(t.carbs)
   return t
 }
 
-/** ===== main actions ===== */
 async function onSubmit () {
-  error.value = ''
-  bestPlan.value = null
-
-  // 1) 计算目标
+  error.value = ''; bestPlan.value = null
   targets.value = calcTargets({
-    sex: sex.value,
-    age: Number(age.value),
-    height: Number(height.value),
-    weight: Number(weight.value),
-    activity: activity.value,
-    goal: goal.value,
+    sex: sex.value, age: Number(age.value), height: Number(height.value),
+    weight: Number(weight.value), activity: activity.value, goal: goal.value,
   })
 
   loading.value = true
   try {
-    // 2) 通过 Cloud Function 生成一日餐单（不要直连 Spoonacular）
-    const day = await genDayPlan({
-      targetCalories: targets.value.kcal,
-      diet: diet.value,
-      exclude: exclude.value
-    })
-
-    // 3) 拉取每个菜谱的详细营养
+    // ✅ 只传数字/字符串
+    const day = await generateMealPlan(targets.value.kcal, diet.value || '', exclude.value || '')
     const infos = await Promise.all(day.meals.map((m) => getRecipeInfo(m.id)))
     const meals = day.meals.map((m, idx) => {
       const info = infos[idx]
-      const macros = extractMacros(info)
       const type = ['breakfast','lunch','dinner'][idx] || 'snack'
-      return { id: m.id, type, name: m.title, ...macros }
+      return { id: m.id, type, name: m.title, ...extractMacros(info) }
     })
-
-    bestPlan.value = {
-      title: '1-Day Meal Plan',
-      meals,
-      totals: sumTotals(meals),
-    }
+    bestPlan.value = { title: '1-Day Meal Plan', meals, totals: sumTotals(meals) }
   } catch (e) {
     console.error(e)
     error.value = e?.response?.data?.error || e?.response?.data?.message || e?.message || 'Failed to generate meal plan.'
-  } finally {
-    loading.value = false
-  }
+  } finally { loading.value = false }
 }
 
 async function recalculate () {
   if (!targets.value) return onSubmit()
-  loading.value = true
-  error.value = ''
+  loading.value = true; error.value = ''
   try {
-    const day = await genDayPlan({
-      targetCalories: targets.value.kcal,
-      diet: diet.value,
-      exclude: exclude.value
-    })
+    // ❗ 修复：不要传对象
+    const day = await generateMealPlan(targets.value.kcal, diet.value || '', exclude.value || '')
     const infos = await Promise.all(day.meals.map((m) => getRecipeInfo(m.id)))
     const meals = day.meals.map((m, idx) => {
       const info = infos[idx]
@@ -239,12 +190,10 @@ async function recalculate () {
   } catch (e) {
     console.error(e)
     error.value = e?.response?.data?.error || e?.response?.data?.message || e?.message || 'Recalculate failed.'
-  } finally {
-    loading.value = false
-  }
+  } finally { loading.value = false }
 }
 
-/** ===== save to Planner (localStorage 版本) ===== */
+/* ===== 保存到本地 Planner（原样保留） ===== */
 function saveDay () {
   if (!bestPlan.value) return alert('Please generate a plan first.')
   const key = 'planner'
@@ -261,29 +210,16 @@ function saveDay () {
   localStorage.setItem(key, JSON.stringify([item, ...prev]))
   alert('✅ Saved (one day) to Planner!')
 }
-
-function jitter (range = 0.05) {
-  const delta = (Math.random() * 2 - 1) * range
-  return 1 + delta
-}
+function jitter (range = 0.05) { const delta = (Math.random() * 2 - 1) * range; return 1 + delta }
 function cloneMacros (r, factor = 1) {
-  return {
-    ...r,
-    kcal: Math.round(r.kcal * factor),
-    protein: Math.round(r.protein * factor),
-    fat: Math.round(r.fat * factor),
-    carbs: Math.round(r.carbs * factor),
-  }
+  return { ...r, kcal: Math.round(r.kcal * factor), protein: Math.round(r.protein * factor),
+           fat: Math.round(r.fat * factor), carbs: Math.round(r.carbs * factor) }
 }
 function stripId (r) { const { id, ...rest } = r; return rest }
-
 function saveWeek () {
   if (!bestPlan.value) return alert('Please generate a plan first.')
-  const base = bestPlan.value.meals
-  if (!base.length) return alert('No meals to build from.')
-
-  const days = []
-  const start = new Date()
+  const base = bestPlan.value.meals; if (!base.length) return alert('No meals to build from.')
+  const days = []; const start = new Date()
   for (let d = 0; d < 7; d++) {
     const order = [d % base.length, (d + 1) % base.length, (d + 2) % base.length, (d + 3) % base.length]
     const dayMeals = [
@@ -294,30 +230,19 @@ function saveWeek () {
     ]
     const totals = sumTotals(dayMeals)
     const date = new Date(start); date.setDate(start.getDate() + d)
-    days.push({
-      date: date.toISOString().slice(0,10),
-      meals: dayMeals.map(stripId),
-      totals,
-    })
+    days.push({ date: date.toISOString().slice(0,10), meals: dayMeals.map(stripId), totals })
   }
-
   const key = 'planner'
   const prev = JSON.parse(localStorage.getItem(key) || '[]')
-  const weekItem = {
-    id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
-    type: 'week',
-    title: '7-Day Plan',
-    weekStart: days[0].date,
-    days,
-    targets: targets.value,
-    savedAt: new Date().toISOString(),
-  }
+  const weekItem = { id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
+    type: 'week', title: '7-Day Plan', weekStart: days[0].date, days, targets: targets.value, savedAt: new Date().toISOString() }
   localStorage.setItem(key, JSON.stringify([weekItem, ...prev]))
   alert('✅ A 7-day plan has been added to Planner!')
 }
 </script>
 
 <style scoped>
+/* 保持你的样式不变 */
 .guide{max-width:860px;margin:40px auto 80px;padding:20px;background:#ffffffcc;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.08)}
 h2{text-align:center;margin-bottom:16px;color:#2a2a2a}
 .form{display:grid;grid-template-columns:1fr 1fr;gap:14px 16px;margin-bottom:18px}

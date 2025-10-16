@@ -1,74 +1,133 @@
-
+// src/stores/planner.js
 import { defineStore } from 'pinia'
 
-const keyFor = (uid) => `np_weekplan_${uid || 'guest'}`
+function storageKey(uid) {
+  return `planner:${uid || 'guest'}`
+}
+
+function emptyTotals() {
+  return { kcal: 0, protein: 0, fat: 0, carbs: 0 }
+}
 
 export const usePlanner = defineStore('planner', {
   state: () => ({
-    week: [],       
-    generatedAt: null,
+    // 原始存档（数组，包含单日与整周的多条记录）
+    entries: [],
+    // 展开的天列表：[{ day, meals, totals }]
+    days: [],
+    // 汇总一周合计（把 days 全部相加）
+    grandTotals: emptyTotals(),
   }),
 
-  getters: {
-    days(state) { return state.week || [] },
-    grandTotals(state) {
-      return state.days.reduce((acc, d) => {
-        acc.kcal    += d.totals.kcal
-        acc.protein += d.totals.protein
-        acc.fat     += d.totals.fat
-        acc.carbs   += d.totals.carbs
-        return acc
-      }, { kcal:0, protein:0, fat:0, carbs:0 })
-    }
-  },
-
   actions: {
-    load(userId) {
+    /** 读取本地存档并展开为 days */
+    load(uid) {
+      // 兼容旧 key（如果之前用过 'planner'）
+      const raw =
+        localStorage.getItem(storageKey(uid)) ||
+        localStorage.getItem('planner') ||
+        '[]'
+
       try {
-        const raw = localStorage.getItem(keyFor(userId))
-        if (raw) {
-          const { week, generatedAt } = JSON.parse(raw)
-          this.week = week || []
-          this.generatedAt = generatedAt || null
+        this.entries = JSON.parse(raw)
+      } catch {
+        this.entries = []
+      }
+      this.rebuild()
+    },
+
+    /** 清空本地存档 */
+    clear(uid) {
+      localStorage.removeItem(storageKey(uid))
+      this.entries = []
+      this.days = []
+      this.grandTotals = emptyTotals()
+    },
+
+    /** 存入“单日”并刷新（给 Guide.saveDay 用） */
+    addDay(uid, dayItem) {
+      const key = storageKey(uid)
+      const list = JSON.parse(localStorage.getItem(key) || '[]')
+      list.unshift(dayItem)
+      localStorage.setItem(key, JSON.stringify(list))
+      this.load(uid)
+    },
+
+    /** 存入“一周”并刷新（给 Guide.saveWeek 用） */
+    addWeek(uid, weekItem) {
+      const key = storageKey(uid)
+      const list = JSON.parse(localStorage.getItem(key) || '[]')
+      list.unshift(weekItem)
+      localStorage.setItem(key, JSON.stringify(list))
+      this.load(uid)
+    },
+
+    /** 把 entries 统一展开为 days，并计算 grandTotals */
+    rebuild() {
+      const d = []
+
+      for (const e of this.entries) {
+        if (e.type === 'day') {
+          // 展开为一天
+          d.push({
+            day: e.savedAt?.slice(0, 10) || e.title || 'One Day',
+            meals: (e.meals || []).map(m => ({
+              type: m.type || 'meal',
+              title: m.name || m.title || 'Meal',
+              kcal: Number(m.kcal) || 0,
+              protein: Number(m.protein) || 0,
+              fat: Number(m.fat) || 0,
+              carbs: Number(m.carbs) || 0,
+            })),
+            totals: {
+              kcal: Number(e.totals?.kcal) || 0,
+              protein: Number(e.totals?.protein) || 0,
+              fat: Number(e.totals?.fat) || 0,
+              carbs: Number(e.totals?.carbs) || 0,
+            },
+          })
+        } else if (e.type === 'week') {
+          // 一周：把每一天都推入 days
+          for (const day of e.days || []) {
+            d.push({
+              day: day.date || 'Day',
+              meals: (day.meals || []).map(m => ({
+                type: m.type || 'meal',
+                title: m.name || m.title || 'Meal',
+                kcal: Number(m.kcal) || 0,
+                protein: Number(m.protein) || 0,
+                fat: Number(m.fat) || 0,
+                carbs: Number(m.carbs) || 0,
+              })),
+              totals: {
+                kcal: Number(day.totals?.kcal) || 0,
+                protein: Number(day.totals?.protein) || 0,
+                fat: Number(day.totals?.fat) || 0,
+                carbs: Number(day.totals?.carbs) || 0,
+              },
+            })
+          }
         }
-      } catch {}
-    },
-    save(userId) {
-      localStorage.setItem(
-        keyFor(userId),
-        JSON.stringify({ week: this.week, generatedAt: this.generatedAt || Date.now() })
-      )
-    },
-    clear(userId) {
-      this.week = []
-      this.generatedAt = null
-      localStorage.removeItem(keyFor(userId))
-    },
-
-    addWeekFromRecommendation(reco, userId) {
-      if (!reco || !reco.meals?.length) return
-
-      const DAY_NAMES = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
-
-      const pickDay = (i) => {
-        const base = [...reco.meals]
-        if (i % 2 === 1) base.reverse()
-        if (i % 3 === 1) base.push(base.shift())
-
-        const totals = base.reduce((acc, m) => {
-          acc.kcal    += Math.round(m.kcal    || 0)
-          acc.protein += Math.round(m.protein || 0)
-          acc.fat     += Math.round(m.fat     || 0)
-          acc.carbs   += Math.round(m.carbs   || 0)
-          return acc
-        }, { kcal:0, protein:0, fat:0, carbs:0 })
-
-        return { day: DAY_NAMES[i], meals: base, totals }
       }
 
-      this.week = Array.from({ length: 7 }, (_, i) => pickDay(i))
-      this.generatedAt = Date.now()
-      this.save(userId)
+      // 写回 days
+      this.days = d
+
+      // 计算 grandTotals
+      const g = emptyTotals()
+      for (const day of d) {
+        g.kcal += day.totals.kcal
+        g.protein += day.totals.protein
+        g.fat += day.totals.fat
+        g.carbs += day.totals.carbs
+      }
+      // 四舍五入更好看
+      this.grandTotals = {
+        kcal: Math.round(g.kcal),
+        protein: Math.round(g.protein),
+        fat: Math.round(g.fat),
+        carbs: Math.round(g.carbs),
+      }
     },
-  }
+  },
 })
