@@ -20,5 +20,6 @@ export default defineConfig(({ mode }) => {
     optimizeDeps: {
       include: ['firebase/app', 'firebase/auth', 'firebase/firestore'],
     },
+
   }
 })

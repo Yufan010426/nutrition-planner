@@ -3,14 +3,28 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
-import { useAuth } from '@/stores/auth'
 
 const app = createApp(App)
-const pinia = createPinia()
+app.use(createPinia())
+app.use(router)
 
-app.use(pinia).use(router)
+import { useAuth } from '@/stores/auth'
+const auth = useAuth()
+auth.bootstrap()  
 
-// ✅ 调用 init，而不是 bootstrap
-useAuth().init()
+router.beforeEach((to, from, next) => {
+  if (!to.meta?.requiresAuth) return next()
 
-app.mount('#app')
+  if (!auth.ready) {
+    const stop = auth.$subscribe(() => {
+      if (auth.ready) {
+        stop()
+        auth.user ? next() : next('/fire-login')
+      }
+    })
+  } else {
+    auth.user ? next() : next('/fire-login')
+  }
+})
+
+router.isReady().then(() => app.mount('#app'))

@@ -50,7 +50,8 @@
       </div>
     </form>
 
-    <RouterLink to="/fire-login" class="alt">Already have an account? Sign in</RouterLink>
+    <RouterLink to="/fire-signin" class="alt">Already have an account? Sign in</RouterLink>
+    
   </div>
 </template>
 
