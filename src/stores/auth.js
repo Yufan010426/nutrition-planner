@@ -1,4 +1,3 @@
-// src/stores/auth.js
 import { defineStore } from 'pinia'
 import { auth } from '@/firebase'
 import {
@@ -8,7 +7,18 @@ import {
   createUserWithEmailAndPassword,
   updateProfile,
   sendEmailVerification,
+  sendPasswordResetEmail, // 如果你有“忘记密码”
 } from 'firebase/auth'
+
+// 生产域（或环境变量里覆写）
+const ORIGIN =
+  import.meta.env.VITE_PUBLIC_ORIGIN || 'https://nutrition-planner.pages.dev'
+
+// 用于邮件动作的 continue URL
+const actionCodeSettings = {
+  url: `${ORIGIN}/fire-login`,   // 验证/重置后回到登录页
+  handleCodeInApp: true,
+}
 
 function toUser(u) {
   if (!u) return null
@@ -28,7 +38,6 @@ export const useAuth = defineStore('auth', {
     _unsub: null,
   }),
   actions: {
-    // 只订阅一次
     bootstrap() {
       if (this._unsub) return
       this._unsub = onAuthStateChanged(auth, (u) => {
@@ -39,30 +48,31 @@ export const useAuth = defineStore('auth', {
 
     async login(email, password) {
       await signInWithEmailAndPassword(auth, email, password)
-      // onAuthStateChanged 会同步 this.user
     },
 
     async logout() {
       await signOut(auth)
-      // onAuthStateChanged 会同步 this.user = null
     },
 
-    /**
-     * 注册后不自动保持登录状态：
-     * 1) 创建账户
-     * 2) 可选：设置昵称 + 发送验证邮件
-     * 3) 立刻 signOut
-     * 4) 由调用方去跳转到登录页
-     */
+    // 注册后不保持登录；发验证邮件；立即登出；让调用方跳到 /fire-login
     async register({ email, password, displayName }) {
       const cred = await createUserWithEmailAndPassword(auth, email, password)
       const u = cred.user
+
       if (displayName) {
         try { await updateProfile(u, { displayName }) } catch {}
       }
-      try { await sendEmailVerification(u) } catch {}
-      // 关键：注册后立刻登出，避免“未登录也显示 Hi”
-      await signOut(auth)
+
+      try {
+        await sendEmailVerification(u, actionCodeSettings) // ★ 指定生产域
+      } catch {}
+
+      await signOut(auth) // 立刻登出
+    },
+
+    // 可选：忘记密码入口也要指定生产域
+    async forgotPassword(email) {
+      await sendPasswordResetEmail(auth, email, actionCodeSettings)
     },
   },
 })
