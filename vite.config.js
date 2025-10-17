@@ -11,6 +11,7 @@ export default defineConfig(({ mode }) => {
     plugins: [vue(), vueDevTools()],
     resolve: {
       alias: {
+        'vue': 'vue/dist/vue.esm-bundler.js',
         '@': fileURLToPath(new URL('./src', import.meta.url)),
       },
     },

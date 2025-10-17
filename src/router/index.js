@@ -5,7 +5,6 @@ const routes = [
   { path: '/guide',         component: () => import('@/views/Guide.vue') },
   { path: '/planner',       component: () => import('@/views/Planner.vue') },
   { path: '/recipes',       component: () => import('@/views/Recipes.vue') },
-  { path: '/getMealCount',  component: () => import('@/views/GetMealCountView.vue') },
   { path: '/weather',       component: () => import('@/views/WeatherView.vue') },
 
   { path: '/fire-signin',   name: 'fire-signin',   component: () => import('@/views/FirebaseSigninView.vue') },

@@ -177,6 +177,20 @@ function sumTotals(items) {
   return t
 }
 
+/** 把当前表单收集为 meta（随记录写进存储，Planner 用来显示 chips / 筛选） */
+function buildMeta() {
+  return {
+    sex: sex.value || '',
+    age: Number(age.value) || '',
+    height: Number(height.value) || '',
+    weight: Number(weight.value) || '',
+    activity: activity.value || '',
+    goal: goal.value || '',
+    diet: diet.value || '',
+    exclude: exclude.value || '',
+  }
+}
+
 /** ---- main actions ---- */
 async function onSubmit () {
   error.value = ''
@@ -241,26 +255,23 @@ async function recalculate () {
 }
 
 /** ---- Save to Planner ---- */
-function saveDay () {
+async function saveDay () {
   if (!bestPlan.value) return alert('Please generate a plan first.')
+  const uid = auth.user?.uid || auth.user?.id || 'guest'
+  const meta = buildMeta()
 
-  const dayItem = {
-    id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
-    type: 'day',
-    savedAt: new Date().toISOString(),
-    title: bestPlan.value.title,
-    meals: bestPlan.value.meals,
+  const today = new Date().toISOString().slice(0, 10)
+  const dayObj = {
+    date: today,
+    meals: bestPlan.value.meals.map(({ id, ...rest }) => rest), // 存储时去掉第三方 id
     totals: bestPlan.value.totals,
-    targets: targets.value,
   }
 
-  // ✅ 这里就有 auth 了
-  const uid = auth.user?.uid || 'guest'
-  plannerStore.addDay(uid, dayItem)
+  await plannerStore.addDay(uid, dayObj, meta)
   alert('✅ Saved (one day) to Planner!')
 }
 
-// 小工具（用于造一周数据）
+// 抖动系数生成一周
 function jitter (range = 0.05) {
   const delta = (Math.random() * 2 - 1) * range
   return 1 + delta
@@ -276,12 +287,11 @@ function cloneMacros (r, factor = 1) {
 }
 function stripId (r) { const { id, ...rest } = r; return rest }
 
-function saveWeek () {
+async function saveWeek () {
   if (!bestPlan.value) return alert('Please generate a plan first.')
   const base = bestPlan.value.meals
   if (!base.length) return alert('No meals to build from.')
 
-  // ✅ 先定义本函数内部的 days（避免 “days is not defined”）
   const weekDays = []
   const start = new Date()
   for (let d = 0; d < 7; d++) {
@@ -301,24 +311,15 @@ function saveWeek () {
     })
   }
 
-  const weekItem = {
-    id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
-    type: 'week',
-    title: '7-Day Plan',
-    weekStart: weekDays[0].date,
-    days: weekDays,            // ← 用我们刚刚定义好的 weekDays
-    targets: targets.value,
-    savedAt: new Date().toISOString(),
-  }
+  const uid = auth.user?.uid || auth.user?.id || 'guest'
+  const meta = buildMeta()
+  await plannerStore.addWeek(uid, { days: weekDays }, meta)
 
-  const uid = auth.user?.uid || 'guest'
-  plannerStore.addWeek(uid, weekItem)
   alert('✅ A 7-day plan has been added to Planner!')
 }
 </script>
 
 <style scoped>
-/* 保持你的样式不变 */
 .guide{max-width:860px;margin:40px auto 80px;padding:20px;background:#ffffffcc;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.08)}
 h2{text-align:center;margin-bottom:16px;color:#2a2a2a}
 .form{display:grid;grid-template-columns:1fr 1fr;gap:14px 16px;margin-bottom:18px}

@@ -18,20 +18,20 @@
       <RouterLink to="/guide" class="item">Guide</RouterLink>
       <RouterLink to="/planner" class="item">Planner</RouterLink>
       <RouterLink to="/recipes" class="item">Recipes</RouterLink>
-      <RouterLink to="/getMealCount" class="item">Meal Count</RouterLink>
       <RouterLink to="/weather" class="item">Weather</RouterLink>
     </div>
 
     <div class="auth">
-      <template v-if="!auth.user">
+      <!-- 等到 auth.ready 再决定显示哪个分支，避免闪烁 -->
+      <template v-if="auth.ready && !auth.user">
         <RouterLink to="/fire-signin" class="btn-outline">Login</RouterLink>
         <RouterLink to="/fire-register" class="btn">Register</RouterLink>
       </template>
 
-      <template v-else>
+      <template v-else-if="auth.ready && auth.user">
         <span class="hi">
-          Hi, {{ auth.user.displayName }}
-          <span class="role" :data-role="auth.user.role">{{ auth.user.role }}</span>
+          Hi, {{ displayName }}
+          <span v-if="role" class="role" :data-role="role">{{ role }}</span>
         </span>
         <button class="btn-outline" @click="auth.logout()">Logout</button>
       </template>
@@ -40,11 +40,21 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
-import { useAuth } from "@/stores/auth";
+import { ref, computed } from 'vue'
+import { useAuth } from '@/stores/auth'
 
-const auth = useAuth();
-const open = ref(false);
+const auth = useAuth()
+const open = ref(false)
+
+// 名字显示优先：store 的 name -> email 前缀 -> 'user'
+const displayName = computed(() =>
+  auth.user?.name ??
+  auth.user?.email?.split('@')[0] ??
+  'user'
+)
+
+// 角色兜底（如果你没做自定义 claims）
+const role = computed(() => auth.user?.role ?? 'user')
 </script>
 
 <style scoped>
