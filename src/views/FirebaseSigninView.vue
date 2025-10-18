@@ -84,7 +84,6 @@ input:focus{outline:none;border-color:#4caf7a;box-shadow:0 0 0 3px #4caf7a2e}
 .or::before,.or::after{content:"";height:1px;background:#e6e6e6;position:absolute;top:50%;width:40%}
 .or::before{left:0}.or::after{right:0}
 
-/* Google 按钮 */
 .google-btn{
   margin-top:4px;width:100%;padding:11px 14px;border-radius:10px;background:#fff;border:1px solid #e6e6e6;
   display:flex;gap:10px;align-items:center;justify-content:center;font-weight:700;cursor:pointer;
@@ -95,7 +94,6 @@ input:focus{outline:none;border-color:#4caf7a;box-shadow:0 0 0 3px #4caf7a2e}
 
 .err{margin-top:10px;color:#c0392b}
 
-/* 新增：注册链接样式 */
 .alt{margin-top:12px;color:#666}
 .alt-link{color:#2f7d56;font-weight:700;text-decoration:underline}
 .alt-link:hover{opacity:.85}

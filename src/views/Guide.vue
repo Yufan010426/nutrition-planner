@@ -126,11 +126,9 @@ import { generateMealPlan, getRecipeInfo } from '@/services/spoonacular.js'
 import { usePlanner } from '@/stores/planner'
 import { useAuth } from '@/stores/auth'
 
-/** ---- stores ---- */
 const plannerStore = usePlanner()
 const auth = useAuth()
 
-/** ---- form state ---- */
 const sex = ref('')
 const age = ref()
 const height = ref()
@@ -140,13 +138,11 @@ const goal = ref('')
 const diet = ref('')
 const exclude = ref('')
 
-/** ---- outputs ---- */
 const targets = ref(null)
 const bestPlan = ref(null)
 const loading = ref(false)
 const error = ref('')
 
-/** ---- helpers ---- */
 function extractMacros(info) {
   const arr = info?.nutrition?.nutrients || []
   const find = (name) => arr.find((n) => n.name.toLowerCase() === name.toLowerCase())
@@ -177,7 +173,6 @@ function sumTotals(items) {
   return t
 }
 
-/** 把当前表单收集为 meta（随记录写进存储，Planner 用来显示 chips / 筛选） */
 function buildMeta() {
   return {
     sex: sex.value || '',
@@ -191,12 +186,10 @@ function buildMeta() {
   }
 }
 
-/** ---- main actions ---- */
 async function onSubmit () {
   error.value = ''
   bestPlan.value = null
 
-  // 1) 计算目标
   targets.value = calcTargets({
     sex: sex.value,
     age: Number(age.value),
@@ -208,10 +201,7 @@ async function onSubmit () {
 
   loading.value = true
   try {
-    // 2) Cloud Function 生成 1 天餐单
     const day = await generateMealPlan(targets.value.kcal, diet.value || '', exclude.value || '')
-
-    // 3) 拉取每个菜谱的详细营养
     const infos = await Promise.all(day.meals.map((m) => getRecipeInfo(m.id)))
     const meals = day.meals.map((m, idx) => {
       const info = infos[idx]
@@ -254,7 +244,6 @@ async function recalculate () {
   }
 }
 
-/** ---- Save to Planner ---- */
 async function saveDay () {
   if (!bestPlan.value) return alert('Please generate a plan first.')
   const uid = auth.user?.uid || auth.user?.id || 'guest'
@@ -263,7 +252,7 @@ async function saveDay () {
   const today = new Date().toISOString().slice(0, 10)
   const dayObj = {
     date: today,
-    meals: bestPlan.value.meals.map(({ id, ...rest }) => rest), // 存储时去掉第三方 id
+    meals: bestPlan.value.meals.map(({ id, ...rest }) => rest),
     totals: bestPlan.value.totals,
   }
 
@@ -271,7 +260,6 @@ async function saveDay () {
   alert('✅ Saved (one day) to Planner!')
 }
 
-// 抖动系数生成一周
 function jitter (range = 0.05) {
   const delta = (Math.random() * 2 - 1) * range
   return 1 + delta

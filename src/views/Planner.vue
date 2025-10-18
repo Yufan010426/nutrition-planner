@@ -21,7 +21,6 @@
     </p>
 
     <template v-else>
-      <!-- ===== 表 1：按天汇总 ===== -->
       <div class="table-card">
         <div class="table-title-row">
           <h3 class="table-title">Daily Totals</h3>
@@ -82,7 +81,6 @@
         />
       </div>
 
-      <!-- ===== 表 2：逐餐明细 ===== -->
       <div class="table-card">
         <div class="table-title-row">
           <h3 class="table-title">Meals (All Days)</h3>
@@ -164,7 +162,6 @@ import { useAuth } from '@/stores/auth'
 import html2pdf from 'html2pdf.js'
 import { getFunctions, httpsCallable } from 'firebase/functions'
 
-/* ---------- 数据源 ---------- */
 const planner = usePlanner()
 const auth = useAuth()
 
@@ -179,7 +176,6 @@ function clearPlan () {
 
 const days = computed(() => planner.days || [])
 
-/* ---------- 将 days 转成两张表的数据 ---------- */
 const dayRows = computed(() => {
   const out = []
   days.value.forEach((d, idx) => {
@@ -245,7 +241,6 @@ const mealTypes = computed(() => {
   return Array.from(set).map(s => s.charAt(0).toUpperCase() + s.slice(1))
 })
 
-/* ---------- 轻量表格状态 + 纯函数 ---------- */
 function createState() {
   return reactive({
     filters: {
@@ -266,7 +261,6 @@ function createState() {
 const dayState  = createState()
 const mealState = createState()
 
-/* 过滤 + 排序 + 分页 */
 const filterRows = (rows, st) => {
   const f = st.filters
   const inDate = (ds) => {
@@ -309,13 +303,11 @@ const paginate = (rows, page, pageSize) => {
   return rows.slice(start, start + pageSize)
 }
 
-/* —— 日表 —— */
 const dayFiltered   = computed(() => filterRows(dayRows.value, dayState))
 const daySorted     = computed(() => sortRows(dayFiltered.value, dayState))
 const dayTotalPages = computed(() => Math.max(1, Math.ceil(daySorted.value.length / dayState.pageSize)))
 const dayPageRows   = computed(() => paginate(daySorted.value, dayState.page, dayState.pageSize))
 
-/* —— 餐表 —— */
 const mealFiltered   = computed(() => filterRows(mealRows.value, mealState))
 const mealSorted     = computed(() => sortRows(mealFiltered.value, mealState))
 const mealTotalPages = computed(() => Math.max(1, Math.ceil(mealSorted.value.length / mealState.pageSize)))
@@ -330,7 +322,6 @@ function overCls(value, th) {
   return th != null && value > Number(th) ? 'over' : ''
 }
 
-/* ---------- PDF 导出 & 邮件 ---------- */
 const exporting = ref(false)
 
 async function renderPdfBlob() {
@@ -342,7 +333,6 @@ async function renderPdfBlob() {
     html2canvas: { scale: 2, useCORS: true },
     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
   }
-  // 只渲染一次，得到 jsPDF 实例
   const pdf = await html2pdf().set(opt).from(targetEl).toPdf().get('pdf')
   const blob = pdf.output('blob')
   return { blob, filename: opt.filename, pdf }
@@ -352,7 +342,7 @@ async function downloadPdf() {
   exporting.value = true
   try {
     const { pdf, filename } = await renderPdfBlob()
-    pdf.save(filename) // 触发下载
+    pdf.save(filename) 
   } finally {
     exporting.value = false
   }
@@ -390,7 +380,7 @@ async function emailPdf() {
         subject: 'Your Nutrition Planner PDF',
         html: '<p>Please find the planner PDF attached.</p>',
         filename,
-        contentBase64: base64, // 👈 不要带 data: 前缀
+        contentBase64: base64, 
       }),
     })
 
@@ -412,7 +402,6 @@ async function emailPdf() {
 }
 
 
-/* 初次加载 */
 refresh()
 </script>
 
@@ -446,7 +435,6 @@ export default defineComponent({
           ])
       }
     }),
-    /* ✅ 无报错 Pager：使用 props page/pageSize/totalPages，向上 emit 更新 */
     Pager: defineComponent({
       props: {
         page: { type: Number, required: true },

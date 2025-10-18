@@ -8,7 +8,7 @@
       <button @click="promote">Promote to Admin</button>
     </div>
 
-    <p class="tip">⚠️ 课堂作业示例：真实生产环境应由后台服务（Cloud Functions / Admin SDK）执行。</p>
+    <p class="tip">⚠️</p>
   </div>
 </template>
 

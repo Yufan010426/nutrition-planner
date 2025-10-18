@@ -18,7 +18,7 @@
       <RouterLink to="/guide" class="item">Guide</RouterLink>
       <RouterLink to="/planner" class="item">Planner</RouterLink>
       <RouterLink to="/recipes" class="item">Recipes</RouterLink>
-      <RouterLink to="/weather" class="item">Weather</RouterLink>
+      <RouterLink to="/Map" class="item">Map</RouterLink>
     </div>
 
     <div class="auth">

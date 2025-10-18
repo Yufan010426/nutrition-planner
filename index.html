@@ -7,9 +7,19 @@
     <title>Nutrition Planner</title>
     <meta name="csp-nonce" content="r4nd0mNonce-please-change" />
 
-    <meta http-equiv="Content-Security-Policy" content="
+    <!-- CSP updated to allow Overpass/Nominatim + OSM tiles -->
+   <meta http-equiv="Content-Security-Policy" content="
       default-src 'self';
+
       connect-src 'self'
+        http://localhost:5173
+        https://router.project-osrm.org
+        https://nominatim.openstreetmap.org
+        https://overpass.kumi.systems
+        https://overpass-api.nextzen.org
+        https://overpass-api.de
+        https://z.overpass-api.de
+        https://overpass.nchc.org.tw
         https://identitytoolkit.googleapis.com
         https://securetoken.googleapis.com
         https://www.googleapis.com
@@ -22,25 +32,29 @@
         https://api.openweathermap.org
         https://*.run.app
         https://*.pages.dev
-        https://nutrition-planner.pages.dev
-        http://localhost:5173;
+        https://nutrition-planner.pages.dev;
+
       script-src 'self' 'unsafe-inline'
         https://www.gstatic.com
         https://www.googletagmanager.com
         https://apis.google.com;
+
       style-src 'self' 'unsafe-inline';
-      img-src 'self' data: https://openweathermap.org https://*.openweathermap.org;
+
+      img-src 'self' data: blob:
+        https://openweathermap.org https://*.openstreetmap.org https://*.openweathermap.org;
+
       frame-src 'self'
         https://accounts.google.com
         https://apis.google.com
         https://yufanliu0426.firebaseapp.com
         https://yufanliu0426.web.app;
+
       frame-ancestors 'self';
     ">
 
-
-
   </head>
+
   <body>
     <div id="app"></div>
     <script type="module" src="/src/main.js"></script>

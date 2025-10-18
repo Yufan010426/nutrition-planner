@@ -1,6 +1,5 @@
 <!-- src/views/Home.vue -->
 <template>
-  <!-- Hero -->
   <section class="hero">
     <div class="content">
       <h1>Eat better, live better!</h1>
@@ -12,7 +11,6 @@
     </div>
   </section>
 
-  <!-- About -->
   <section class="about">
     <h2>Why Nutrition Matters</h2>
     <p>
@@ -28,7 +26,6 @@
     </p>
   </section>
 
-  <!-- Rating -->
   <section class="rating">
     <h3>Rate this App</h3>
 
@@ -55,14 +52,12 @@
         maxlength="140"
       ></textarea>
 
-      <!-- 错误 / 成功信息 -->
       <p v-if="invalidReason" class="msg error" role="alert">{{ invalidReason }}</p>
       <p v-else-if="msg" class="msg ok">{{ msg }}</p>
 
       <button class="btn" :disabled="!canSubmit">Submit</button>
     </form>
 
-    <!-- 最近 5 条评论（纯文本渲染） -->
     <ul v-if="ratings.length" class="recent">
       <li v-for="(r, i) in recentFive" :key="i">
         <span class="mini-stars" aria-hidden="true">
@@ -82,15 +77,13 @@ import { useAuth } from '@/stores/auth'
 const auth = useAuth()
 const LS_KEY = 'np_ratings'
 
-const ratings = ref([])   // { score:1..5, note, at, by }
+const ratings = ref([])   
 const score   = ref(0)
 const note    = ref('')
 const msg     = ref('')
 
-// 1) 禁止的字符集合：出现即报错、禁用提交
-const FORBIDDEN = /[<>{}\[\]()`'",&]/   // < > & { } [ ] ( ) ` ' " , &（含逗号可按需移除）
+const FORBIDDEN = /[<>{}\[\]()`'",&]/   
 
-// 2) 仅用于存储前的保险性转义，防止意外注入（即使禁用也再净化一次）
 function sanitizeText (s) {
   return String(s ?? '')
     .replaceAll('&', '&amp;')
@@ -111,10 +104,9 @@ const avg = computed(() => {
 
 const recentFive   = computed(() => ratings.value.slice(0, 5))
 
-// 3) 实时校验理由（有内容才校验；允许空评语）
 const invalidReason = computed(() => {
   const raw = note.value ?? ''
-  if (!raw) return ''                  // 空备注允许
+  if (!raw) return ''               
   if (raw.length > 140) return 'Comment exceeds 140 characters'
   if (FORBIDDEN.test(raw)) {
     return 'Comment contains illegal characters: <, >, &, { }, [ ], ( ), `, \', "'
@@ -122,13 +114,11 @@ const invalidReason = computed(() => {
   return ''
 })
 
-// 4) 提交条件：评分已选 + 无错误
 const canSubmit = computed(() => !!score.value && !invalidReason.value)
 
 function submit () {
   msg.value = ''
 
-  // 再次严格校验（双保险）
   const reason = invalidReason.value
   if (!score.value || reason) {
     return
@@ -136,7 +126,7 @@ function submit () {
 
   const item = {
     score: Math.max(1, Math.min(5, Number(score.value))),
-    note: sanitizeText(note.value),     // 存储前仍做转义
+    note: sanitizeText(note.value),   
     at: new Date().toISOString(),
     by: auth.user?.uid || 'guest'
   }
@@ -152,7 +142,6 @@ function submit () {
 </script>
 
 <style scoped>
-/* ====== Hero ====== */
 .hero {
   display: flex;
   align-items: flex-start;
@@ -171,12 +160,10 @@ h1 { font-size: 2.5rem; color: #2a2a2a; margin-bottom: 12px; }
 }
 .btn:hover { background: #388e5a; transform: scale(1.05); }
 
-/* ====== About ====== */
 .about { max-width: 800px; margin: 40px auto; text-align: center; padding: 0 20px; }
 .about h2 { font-size: 1.8rem; margin-bottom: 16px; color: #2a2a2a; }
 .about p { font-size: 1rem; color: #444; line-height: 1.6; margin-bottom: 16px; }
 
-/* ====== Rating ====== */
 .rating {
   max-width: 680px; margin: 32px auto; padding: 16px;
   border-radius: 12px; background:#ffffffcc; box-shadow:0 4px 16px rgba(0,0,0,.06);
