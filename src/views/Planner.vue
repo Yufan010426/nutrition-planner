@@ -367,36 +367,50 @@ function blobToBase64(blob) {
   })
 }
 
+const API_BASE = (import.meta.env.VITE_API_BASE || '').replace(/\/+$/, '')
+if (!API_BASE) {
+  console.error('[emailPdf] Missing VITE_API_BASE, check Pages env vars')
+}
+
 async function emailPdf() {
   if (!auth.user?.email) return alert('Please sign in first.')
   exporting.value = true
   try {
     const { blob, filename } = await renderPdfBlob()
     const base64 = await blobToBase64(blob)
-     const res = await fetch(`${import.meta.env.VITE_API_BASE}/?path=send-mail`, {
-     method: 'POST',
-     headers: { 'Content-Type': 'application/json' },
-     body: JSON.stringify({
-       to: auth.user.email,
-       subject: 'Your Nutrition Planner PDF',
-       html: '<p>Please find the planner PDF attached.</p>',
-       filename,
-       contentBase64: base64
-     })
-   })
-   if (!res.ok) {
-     const t = await res.text().catch(()=>'')
-     throw new Error(`send-mail failed: ${res.status} ${t}`)
-   }
+
+    const url = `${API_BASE}/?path=send-mail`
+    console.log('[emailPdf] POST', url, 'to:', auth.user.email)
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        to: auth.user.email,
+        subject: 'Your Nutrition Planner PDF',
+        html: '<p>Please find the planner PDF attached.</p>',
+        filename,
+        contentBase64: base64, // 👈 不要带 data: 前缀
+      }),
+    })
+
+    let data = null
+    try { data = await res.json() } catch {}
+    console.log('[emailPdf] resp', res.status, data)
+
+    if (!res.ok || !data?.ok) {
+      throw new Error(`send-mail ${res.status} ${JSON.stringify(data)}`)
+    }
 
     alert('📧 Email sent! Check your inbox.')
   } catch (e) {
-    console.error(e)
-    alert('Failed to email the PDF.')
+    console.error('[emailPdf] failed:', e)
+    alert('Failed to email the PDF. See console.')
   } finally {
     exporting.value = false
   }
 }
+
 
 /* 初次加载 */
 refresh()
