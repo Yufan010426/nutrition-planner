@@ -1,16 +1,16 @@
-<!-- src/views/Planner.vue -->
 <template>
-  <section class="planner">
+  <main id="main" class="planner" role="main" aria-labelledby="page-title">
     <div class="head">
-      <h2>Your Weekly Planner</h2>
-      <div class="ops">
-        <button class="btn-outline" @click="refresh">Refresh</button>
-        <button class="btn-danger" @click="clearPlan">Clear</button>
+      <h1 id="page-title">Your Weekly Planner</h1>
 
-        <button class="btn-outline" :disabled="exporting" @click="downloadPdf">
+      <div class="ops" aria-live="polite">
+        <button class="btn-outline" type="button" @click="refresh">Refresh</button>
+        <button class="btn-danger"  type="button" @click="clearPlan">Clear</button>
+
+        <button class="btn-outline" type="button" :disabled="exporting" @click="downloadPdf">
           {{ exporting ? 'Exporting…' : 'Download PDF' }}
         </button>
-        <button class="btn" :disabled="exporting || !auth.user?.email" @click="emailPdf">
+        <button class="btn" type="button" :disabled="exporting || !auth.user?.email" @click="emailPdf">
           {{ exporting ? 'Preparing…' : 'Email me the PDF' }}
         </button>
       </div>
@@ -21,48 +21,101 @@
     </p>
 
     <template v-else>
+      <!-- ===== 表 1：按天汇总 ===== -->
       <div class="table-card">
         <div class="table-title-row">
-          <h3 class="table-title">Daily Totals</h3>
-          <div class="hi-controls">
+          <h2 class="table-title">Daily Totals</h2>
+
+          <div class="hi-controls" role="group" aria-label="Highlight thresholds">
             <span class="hint">Highlight &gt; </span>
-            <label>kcal <input type="number" v-model.number="dayState.highlight.kcal" placeholder="-" /></label>
-            <label>P <input type="number" v-model.number="dayState.highlight.protein" placeholder="-" /></label>
-            <label>F <input type="number" v-model.number="dayState.highlight.fat" placeholder="-" /></label>
-            <label>C <input type="number" v-model.number="dayState.highlight.carbs" placeholder="-" /></label>
+            <label for="hi-kcal">kcal</label>
+            <input id="hi-kcal" type="number" v-model.number="dayState.highlight.kcal" placeholder="-" />
+            <label for="hi-p">P</label>
+            <input id="hi-p" type="number" v-model.number="dayState.highlight.protein" placeholder="-" />
+            <label for="hi-f">F</label>
+            <input id="hi-f" type="number" v-model.number="dayState.highlight.fat" placeholder="-" />
+            <label for="hi-c">C</label>
+            <input id="hi-c" type="number" v-model.number="dayState.highlight.carbs" placeholder="-" />
           </div>
         </div>
 
         <div class="table-wrap">
           <table class="table">
+            <caption class="sr-only">Daily nutrition totals for your selected week</caption>
             <thead>
               <tr>
-                <th @click="toggleSort(dayState,'date')">Date <SortIcon :state="dayState" col="date" /></th>
-                <th @click="toggleSort(dayState,'kcal')">kcal <SortIcon :state="dayState" col="kcal" /></th>
-                <th @click="toggleSort(dayState,'protein')">Protein (g) <SortIcon :state="dayState" col="protein" /></th>
-                <th @click="toggleSort(dayState,'fat')">Fat (g) <SortIcon :state="dayState" col="fat" /></th>
-                <th @click="toggleSort(dayState,'carbs')">Carbs (g) <SortIcon :state="dayState" col="carbs" /></th>
+                <th scope="col"
+                    :aria-sort="ariaSort(dayState,'date')"
+                    @click="toggleSort(dayState,'date')">Date
+                  <SortIcon :state="dayState" col="date" />
+                </th>
+                <th scope="col"
+                    :aria-sort="ariaSort(dayState,'kcal')"
+                    @click="toggleSort(dayState,'kcal')">kcal
+                  <SortIcon :state="dayState" col="kcal" />
+                </th>
+                <th scope="col"
+                    :aria-sort="ariaSort(dayState,'protein')"
+                    @click="toggleSort(dayState,'protein')">Protein (g)
+                  <SortIcon :state="dayState" col="protein" />
+                </th>
+                <th scope="col"
+                    :aria-sort="ariaSort(dayState,'fat')"
+                    @click="toggleSort(dayState,'fat')">Fat (g)
+                  <SortIcon :state="dayState" col="fat" />
+                </th>
+                <th scope="col"
+                    :aria-sort="ariaSort(dayState,'carbs')"
+                    @click="toggleSort(dayState,'carbs')">Carbs (g)
+                  <SortIcon :state="dayState" col="carbs" />
+                </th>
               </tr>
               <tr class="filters">
                 <th class="date-range">
-                  <input type="date" v-model="dayState.filters.dateFrom" />
-                  <span>—</span>
-                  <input type="date" v-model="dayState.filters.dateTo" />
+                  <label class="sr-only" for="d-from">From</label>
+                  <input id="d-from" type="date" v-model="dayState.filters.dateFrom" />
+                  <span aria-hidden="true">—</span>
+                  <label class="sr-only" for="d-to">To</label>
+                  <input id="d-to" type="date" v-model="dayState.filters.dateTo" />
                 </th>
-                <th><RangeFilter v-model:min="dayState.filters.kcalMin" v-model:max="dayState.filters.kcalMax" /></th>
-                <th><RangeFilter v-model:min="dayState.filters.proteinMin" v-model:max="dayState.filters.proteinMax" /></th>
-                <th><RangeFilter v-model:min="dayState.filters.fatMin" v-model:max="dayState.filters.fatMax" /></th>
-                <th><RangeFilter v-model:min="dayState.filters.carbsMin" v-model:max="dayState.filters.carbsMax" /></th>
+                <th>
+                  <RangeFilter
+                    aria-labelledby="f-kcal"
+                    v-model:min="dayState.filters.kcalMin"
+                    v-model:max="dayState.filters.kcalMax" />
+                  <span id="f-kcal" class="sr-only">Filter kcal range</span>
+                </th>
+                <th>
+                  <RangeFilter
+                    aria-labelledby="f-p"
+                    v-model:min="dayState.filters.proteinMin"
+                    v-model:max="dayState.filters.proteinMax" />
+                  <span id="f-p" class="sr-only">Filter protein range</span>
+                </th>
+                <th>
+                  <RangeFilter
+                    aria-labelledby="f-f"
+                    v-model:min="dayState.filters.fatMin"
+                    v-model:max="dayState.filters.fatMax" />
+                  <span id="f-f" class="sr-only">Filter fat range</span>
+                </th>
+                <th>
+                  <RangeFilter
+                    aria-labelledby="f-c"
+                    v-model:min="dayState.filters.carbsMin"
+                    v-model:max="dayState.filters.carbsMax" />
+                  <span id="f-c" class="sr-only">Filter carbs range</span>
+                </th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="r in dayPageRows" :key="r._key">
-                <td>
+                <th scope="row">
                   <div class="date-line">{{ r.date }}</div>
-                  <div v-if="r.metaChips.length" class="chips">
+                  <div v-if="r.metaChips.length" class="chips" aria-label="Profile meta">
                     <span v-for="(c,idx) in r.metaChips" :key="idx" class="chip">{{ c }}</span>
                   </div>
-                </td>
+                </th>
                 <td :class="overCls(r.kcal, dayState.highlight.kcal)">{{ r.kcal }}</td>
                 <td :class="overCls(r.protein, dayState.highlight.protein)">{{ r.protein }}</td>
                 <td :class="overCls(r.fat, dayState.highlight.fat)">{{ r.fat }}</td>
@@ -81,57 +134,73 @@
         />
       </div>
 
+      <!-- ===== 表 2：逐餐明细 ===== -->
       <div class="table-card">
         <div class="table-title-row">
-          <h3 class="table-title">Meals (All Days)</h3>
-          <div class="hi-controls">
+          <h2 class="table-title">Meals (All Days)</h2>
+          <div class="hi-controls" role="group" aria-label="Highlight thresholds (meals)">
             <span class="hint">Highlight &gt; </span>
-            <label>kcal <input type="number" v-model.number="mealState.highlight.kcal" placeholder="-" /></label>
-            <label>P <input type="number" v-model.number="mealState.highlight.protein" placeholder="-" /></label>
-            <label>F <input type="number" v-model.number="mealState.highlight.fat" placeholder="-" /></label>
-            <label>C <input type="number" v-model.number="mealState.highlight.carbs" placeholder="-" /></label>
+            <label for="mh-k">kcal</label>
+            <input id="mh-k" type="number" v-model.number="mealState.highlight.kcal" placeholder="-" />
+            <label for="mh-p">P</label>
+            <input id="mh-p" type="number" v-model.number="mealState.highlight.protein" placeholder="-" />
+            <label for="mh-f">F</label>
+            <input id="mh-f" type="number" v-model.number="mealState.highlight.fat" placeholder="-" />
+            <label for="mh-c">C</label>
+            <input id="mh-c" type="number" v-model.number="mealState.highlight.carbs" placeholder="-" />
           </div>
         </div>
 
         <div class="table-wrap">
           <table class="table">
+            <caption class="sr-only">All meals across days with nutrition details</caption>
             <thead>
               <tr>
-                <th @click="toggleSort(mealState,'date')">Date <SortIcon :state="mealState" col="date" /></th>
-                <th @click="toggleSort(mealState,'type')">Type <SortIcon :state="mealState" col="type" /></th>
-                <th @click="toggleSort(mealState,'name')">Title <SortIcon :state="mealState" col="name" /></th>
-                <th @click="toggleSort(mealState,'kcal')">kcal <SortIcon :state="mealState" col="kcal" /></th>
-                <th @click="toggleSort(mealState,'protein')">P (g) <SortIcon :state="mealState" col="protein" /></th>
-                <th @click="toggleSort(mealState,'fat')">F (g) <SortIcon :state="mealState" col="fat" /></th>
-                <th @click="toggleSort(mealState,'carbs')">C (g) <SortIcon :state="mealState" col="carbs" /></th>
+                <th scope="col" :aria-sort="ariaSort(mealState,'date')"   @click="toggleSort(mealState,'date')">Date   <SortIcon :state="mealState" col="date" /></th>
+                <th scope="col" :aria-sort="ariaSort(mealState,'type')"   @click="toggleSort(mealState,'type')">Type   <SortIcon :state="mealState" col="type" /></th>
+                <th scope="col" :aria-sort="ariaSort(mealState,'name')"   @click="toggleSort(mealState,'name')">Title  <SortIcon :state="mealState" col="name" /></th>
+                <th scope="col" :aria-sort="ariaSort(mealState,'kcal')"   @click="toggleSort(mealState,'kcal')">kcal   <SortIcon :state="mealState" col="kcal" /></th>
+                <th scope="col" :aria-sort="ariaSort(mealState,'protein')"@click="toggleSort(mealState,'protein')">P (g) <SortIcon :state="mealState" col="protein" /></th>
+                <th scope="col" :aria-sort="ariaSort(mealState,'fat')"    @click="toggleSort(mealState,'fat')">F (g)   <SortIcon :state="mealState" col="fat" /></th>
+                <th scope="col" :aria-sort="ariaSort(mealState,'carbs')"  @click="toggleSort(mealState,'carbs')">C (g)  <SortIcon :state="mealState" col="carbs" /></th>
               </tr>
               <tr class="filters">
                 <th class="date-range">
-                  <input type="date" v-model="mealState.filters.dateFrom" />
-                  <span>—</span>
-                  <input type="date" v-model="mealState.filters.dateTo" />
+                  <label class="sr-only" for="m-from">From</label>
+                  <input id="m-from" type="date" v-model="mealState.filters.dateFrom" />
+                  <span aria-hidden="true">—</span>
+                  <label class="sr-only" for="m-to">To</label>
+                  <input id="m-to" type="date" v-model="mealState.filters.dateTo" />
                 </th>
                 <th>
-                  <select v-model="mealState.filters.type" class="select">
+                  <label class="sr-only" for="m-type">Type</label>
+                  <select id="m-type" v-model="mealState.filters.type" class="select">
                     <option value="">All</option>
                     <option v-for="t in mealTypes" :key="t" :value="t">{{ t }}</option>
                   </select>
                 </th>
-                <th><input v-model="mealState.filters.name" placeholder="Search title" /></th>
-                <th><RangeFilter v-model:min="mealState.filters.kcalMin" v-model:max="mealState.filters.kcalMax" /></th>
-                <th><RangeFilter v-model:min="mealState.filters.proteinMin" v-model:max="mealState.filters.proteinMax" /></th>
-                <th><RangeFilter v-model:min="mealState.filters.fatMin" v-model:max="mealState.filters.fatMax" /></th>
-                <th><RangeFilter v-model:min="mealState.filters.carbsMin" v-model:max="mealState.filters.carbsMax" /></th>
+                <th>
+                  <label class="sr-only" for="title-search">Search title</label>
+                  <input id="title-search" v-model="mealState.filters.name" placeholder="Search title" />
+                </th>
+                <th><RangeFilter aria-labelledby="rf-k" v-model:min="mealState.filters.kcalMin"    v-model:max="mealState.filters.kcalMax" /></th>
+                <span id="rf-k" class="sr-only">Filter kcal range</span>
+                <th><RangeFilter aria-labelledby="rf-p" v-model:min="mealState.filters.proteinMin" v-model:max="mealState.filters.proteinMax" /></th>
+                <span id="rf-p" class="sr-only">Filter protein range</span>
+                <th><RangeFilter aria-labelledby="rf-f" v-model:min="mealState.filters.fatMin"     v-model:max="mealState.filters.fatMax" /></th>
+                <span id="rf-f" class="sr-only">Filter fat range</span>
+                <th><RangeFilter aria-labelledby="rf-c" v-model:min="mealState.filters.carbsMin"   v-model:max="mealState.filters.carbsMax" /></th>
+                <span id="rf-c" class="sr-only">Filter carbs range</span>
               </tr>
             </thead>
             <tbody>
               <tr v-for="r in mealPageRows" :key="r._key">
-                <td>
+                <th scope="row">
                   <div class="date-line">{{ r.date }}</div>
-                  <div v-if="r.metaChips.length" class="chips">
+                  <div v-if="r.metaChips.length" class="chips" aria-label="Profile meta">
                     <span v-for="(c,idx) in r.metaChips" :key="idx" class="chip">{{ c }}</span>
                   </div>
-                </td>
+                </th>
                 <td class="cap">{{ r.type }}</td>
                 <td class="ellipsis" :title="r.name">{{ r.name }}</td>
                 <td :class="overCls(r.kcal, mealState.highlight.kcal)">{{ r.kcal }}</td>
@@ -152,7 +221,7 @@
         />
       </div>
     </template>
-  </section>
+  </main>
 </template>
 
 <script setup>
@@ -165,6 +234,7 @@ import { getFunctions, httpsCallable } from 'firebase/functions'
 const planner = usePlanner()
 const auth = useAuth()
 
+const ariaSort = (st, key) => st.sortKey===key ? (st.sortDir==='asc'?'ascending':'descending') : 'none'
 function refresh () {
   const uid = auth.user?.uid || auth.user?.id || 'guest'
   planner.load(uid)
