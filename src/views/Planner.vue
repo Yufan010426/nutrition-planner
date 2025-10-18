@@ -6,6 +6,13 @@
       <div class="ops">
         <button class="btn-outline" @click="refresh">Refresh</button>
         <button class="btn-danger" @click="clearPlan">Clear</button>
+
+        <button class="btn-outline" :disabled="exporting" @click="downloadPdf">
+          {{ exporting ? 'Exporting…' : 'Download PDF' }}
+        </button>
+        <button class="btn" :disabled="exporting || !auth.user?.email" @click="emailPdf">
+          {{ exporting ? 'Preparing…' : 'Email me the PDF' }}
+        </button>
       </div>
     </div>
 
@@ -18,7 +25,7 @@
       <div class="table-card">
         <div class="table-title-row">
           <h3 class="table-title">Daily Totals</h3>
-        <div class="hi-controls">
+          <div class="hi-controls">
             <span class="hint">Highlight &gt; </span>
             <label>kcal <input type="number" v-model.number="dayState.highlight.kcal" placeholder="-" /></label>
             <label>P <input type="number" v-model.number="dayState.highlight.protein" placeholder="-" /></label>
@@ -66,13 +73,12 @@
           </table>
         </div>
 
-        <!-- ✅ 与 Pager 的 props/事件完全一致 -->
         <Pager
           :page="dayState.page"
           :page-size="dayState.pageSize"
           :total-pages="dayTotalPages"
           @update:page="val => dayState.page = val"
-          @update:page-size="val => { dayState.pageSize = val; dayState.page = 1 }"
+          @update:page-size="val => dayState.pageSize = val"
         />
       </div>
 
@@ -122,7 +128,12 @@
             </thead>
             <tbody>
               <tr v-for="r in mealPageRows" :key="r._key">
-                <td>{{ r.date }}</td>
+                <td>
+                  <div class="date-line">{{ r.date }}</div>
+                  <div v-if="r.metaChips.length" class="chips">
+                    <span v-for="(c,idx) in r.metaChips" :key="idx" class="chip">{{ c }}</span>
+                  </div>
+                </td>
                 <td class="cap">{{ r.type }}</td>
                 <td class="ellipsis" :title="r.name">{{ r.name }}</td>
                 <td :class="overCls(r.kcal, mealState.highlight.kcal)">{{ r.kcal }}</td>
@@ -139,7 +150,7 @@
           :page-size="mealState.pageSize"
           :total-pages="mealTotalPages"
           @update:page="val => mealState.page = val"
-          @update:page-size="val => { mealState.pageSize = val; mealState.page = 1 }"
+          @update:page-size="val => mealState.pageSize = val"
         />
       </div>
     </template>
@@ -147,9 +158,11 @@
 </template>
 
 <script setup>
-import { computed, reactive } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { usePlanner } from '@/stores/planner'
 import { useAuth } from '@/stores/auth'
+import html2pdf from 'html2pdf.js'
+import { getFunctions, httpsCallable } from 'firebase/functions'
 
 /* ---------- 数据源 ---------- */
 const planner = usePlanner()
@@ -166,7 +179,7 @@ function clearPlan () {
 
 const days = computed(() => planner.days || [])
 
-/* ---------- 构造行数据 ---------- */
+/* ---------- 将 days 转成两张表的数据 ---------- */
 const dayRows = computed(() => {
   const out = []
   days.value.forEach((d, idx) => {
@@ -199,6 +212,17 @@ const mealRows = computed(() => {
   const out = []
   days.value.forEach((d, dIdx) => {
     const date = d.date || d.day || d.weekDate || d.weekStart || ''
+    const meta = d.meta || {}
+    const chips = []
+    if (meta.sex) chips.push(`Sex:${meta.sex}`)
+    if (meta.age) chips.push(`Age:${meta.age}`)
+    if (meta.height) chips.push(`H:${meta.height}cm`)
+    if (meta.weight) chips.push(`W:${meta.weight}kg`)
+    if (meta.activity) chips.push(`Act:${meta.activity}`)
+    if (meta.goal) chips.push(`Goal:${meta.goal}`)
+    if (meta.diet) chips.push(`Diet:${meta.diet}`)
+    if (meta.exclude) chips.push(`Ex:${meta.exclude}`)
+
     ;(d.meals || []).forEach((m, mIdx) => {
       out.push({
         _key: `${date}#${dIdx}#${mIdx}`,
@@ -209,6 +233,7 @@ const mealRows = computed(() => {
         protein: m.protein ?? 0,
         fat: m.fat ?? 0,
         carbs: m.carbs ?? 0,
+        metaChips: chips,
       })
     })
   })
@@ -220,7 +245,7 @@ const mealTypes = computed(() => {
   return Array.from(set).map(s => s.charAt(0).toUpperCase() + s.slice(1))
 })
 
-/* ---------- 轻量状态 & 纯 computed 派生 ---------- */
+/* ---------- 轻量表格状态 + 纯函数 ---------- */
 function createState() {
   return reactive({
     filters: {
@@ -241,6 +266,7 @@ function createState() {
 const dayState  = createState()
 const mealState = createState()
 
+/* 过滤 + 排序 + 分页 */
 const filterRows = (rows, st) => {
   const f = st.filters
   const inDate = (ds) => {
@@ -299,8 +325,77 @@ function toggleSort(state, key) {
   if (state.sortKey === key) state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc'
   else { state.sortKey = key; state.sortDir = 'asc' }
 }
+
 function overCls(value, th) {
   return th != null && value > Number(th) ? 'over' : ''
+}
+
+/* ---------- PDF 导出 & 邮件 ---------- */
+const exporting = ref(false)
+
+async function renderPdfBlob() {
+  const targetEl = document.querySelector('.planner') || document.body
+  const opt = {
+    margin: [10,10,10,10],
+    filename: 'Nutrition-Planner.pdf',
+    image: { type: 'jpeg', quality: 0.95 },
+    html2canvas: { scale: 2, useCORS: true },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+  }
+  // 只渲染一次，得到 jsPDF 实例
+  const pdf = await html2pdf().set(opt).from(targetEl).toPdf().get('pdf')
+  const blob = pdf.output('blob')
+  return { blob, filename: opt.filename, pdf }
+}
+
+async function downloadPdf() {
+  exporting.value = true
+  try {
+    const { pdf, filename } = await renderPdfBlob()
+    pdf.save(filename) // 触发下载
+  } finally {
+    exporting.value = false
+  }
+}
+
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result).replace(/^data:application\/pdf;base64,/, ''))
+    reader.onerror = reject
+    reader.readAsDataURL(blob)
+  })
+}
+
+async function emailPdf() {
+  if (!auth.user?.email) return alert('Please sign in first.')
+  exporting.value = true
+  try {
+    const { blob, filename } = await renderPdfBlob()
+    const base64 = await blobToBase64(blob)
+     const res = await fetch(`${import.meta.env.VITE_API_BASE}/?path=send-mail`, {
+     method: 'POST',
+     headers: { 'Content-Type': 'application/json' },
+     body: JSON.stringify({
+       to: auth.user.email,
+       subject: 'Your Nutrition Planner PDF',
+       html: '<p>Please find the planner PDF attached.</p>',
+       filename,
+       contentBase64: base64
+     })
+   })
+   if (!res.ok) {
+     const t = await res.text().catch(()=>'')
+     throw new Error(`send-mail failed: ${res.status} ${t}`)
+   }
+
+    alert('📧 Email sent! Check your inbox.')
+  } catch (e) {
+    console.error(e)
+    alert('Failed to email the PDF.')
+  } finally {
+    exporting.value = false
+  }
 }
 
 /* 初次加载 */
@@ -312,7 +407,6 @@ import { defineComponent, h } from 'vue'
 
 export default defineComponent({
   components: {
-    /* 无运行时模板，避免 CSP 报错 */
     SortIcon: defineComponent({
       props: { state: Object, col: String },
       setup(props) {
@@ -324,7 +418,6 @@ export default defineComponent({
           }, '▲▼')
       }
     }),
-
     RangeFilter: defineComponent({
       props: { min: Number, max: Number },
       emits: ['update:min', 'update:max'],
@@ -339,20 +432,18 @@ export default defineComponent({
           ])
       }
     }),
-
-    /* ✅ 与模版使用的 props/事件对齐 */
+    /* ✅ 无报错 Pager：使用 props page/pageSize/totalPages，向上 emit 更新 */
     Pager: defineComponent({
       props: {
         page: { type: Number, required: true },
         pageSize: { type: Number, required: true },
-        totalPages: { type: Number, required: true },
+        totalPages: { type: Number, required: true }
       },
       emits: ['update:page', 'update:page-size'],
       setup(props, { emit }) {
         const prev = () => { if (props.page > 1) emit('update:page', props.page - 1) }
         const next = () => { if (props.page < props.totalPages) emit('update:page', props.page + 1) }
         const onPageSize = e => emit('update:page-size', Number(e.target.value))
-
         return () =>
           h('div', { class: 'pager' }, [
             h('div', { class: 'left' }, [
@@ -364,17 +455,9 @@ export default defineComponent({
               ])
             ]),
             h('div', { class: 'right' }, [
-              h('button', {
-                class: 'btn-outline sm',
-                disabled: props.page <= 1,
-                onClick: prev
-              }, 'Prev'),
+              h('button', { class: 'btn-outline sm', disabled: props.page <= 1, onClick: prev }, 'Prev'),
               h('span', null, `Page ${props.page} / ${props.totalPages}`),
-              h('button', {
-                class: 'btn-outline sm',
-                disabled: props.page >= props.totalPages,
-                onClick: next
-              }, 'Next')
+              h('button', { class: 'btn-outline sm', disabled: props.page >= props.totalPages, onClick: next }, 'Next')
             ])
           ])
       }
@@ -382,69 +465,37 @@ export default defineComponent({
   }
 })
 </script>
-<style scoped>
-/* 更宽的容器，桌面端无横向滚动 */
-.planner{ max-width:1600px; margin:0 auto; padding:20px 28px; }
 
+<style scoped>
+.planner{max-width: 1200px;margin: 0 auto;padding: 16px 24px;}
 .head{display:flex;align-items:center;justify-content:space-between;margin:12px 0 16px}
-.ops{display:flex;gap:10px}
+.ops{display:flex;gap:10px;flex-wrap:wrap}
 .empty{margin:12px 0}
 
-/* 卡片外观 */
-.table-card{
-  background:#fff;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.08);
-  padding:18px 20px;margin:18px 0; overflow:hidden; /* 防止极端情况下轻微溢出 */
-}
-.table-title-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.table-card{background:#fff;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.08);padding:16px 18px;margin:18px 0;}
+.table-title-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .table-title{margin:4px 0 10px}
 .hi-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .hi-controls .hint{opacity:.7}
-.hi-controls input{width:76px;padding:6px;border:1px solid #e0e0e0;border-radius:8px}
+.hi-controls input{width:90px;padding:6px;border:1px solid #e0e0e0;border-radius:8px}
 
-/* 表格本体 */
-.table-wrap{overflow:visible}
-.table{
-  width:100%;
-  border-collapse:separate;
-  border-spacing:0;
-  table-layout:fixed;               /* 固定布局，列更稳定 */
-}
-.table thead th{
-  position:sticky; top:0; z-index:1;
-  background:#f7faf8;border-bottom:2px solid #e8efe9;
-  cursor:pointer; user-select:none;
-  padding:10px 12px;                /* 收一点 padding，给过滤控件留空间 */
-  font-size:15px;
-}
+.table-wrap{overflow:auto}
+.table{width:100%;border-collapse:separate;border-spacing:0;min-width:860px}
+.table thead th{position:sticky;top:0;background:#f7faf8;border-bottom:2px solid #e8efe9;cursor:pointer;user-select:none;padding:10px}
 .table thead th:first-child{border-top-left-radius:8px}
 .table thead th:last-child{border-top-right-radius:8px}
-.table tbody td{padding:12px;border-bottom:1px dashed #e9e9e9;font-size:15px}
-
+.table tbody td{padding:10px;border-bottom:1px dashed #e9e9e9;vertical-align:top}
 .table .filters th{cursor:default;background:#fbfdfc}
-.table .filters input,.select{
-  width:100%; padding:8px; border:1px solid #e0e0e0; border-radius:8px; background:#fff;
-  box-sizing:border-box;            /* 防止边框把单元格撑爆 */
-}
+.table .filters input,.select{width:100%;padding:8px;border:1px solid #e0e0e0;border-radius:8px;background:#fff}
+.date-range{display:flex;gap:6px;align-items:center}
+.range{display:flex;gap:6px;align-items:center}
 
-/* 关键：让两个输入并排时可收缩而不溢出 */
-.date-range,.range{
-  width:100%;
-  display:grid;
-  grid-template-columns: minmax(0,1fr) auto minmax(0,1fr);
-  gap:6px; align-items:center;
-}
-.date-range input,.range input{
-  min-width:0;                      /* 允许在窄列中收缩 */
-  width:100%; box-sizing:border-box;
-}
-
-/* 其余小样式 */
 .date-line{font-weight:600}
 .chips{margin-top:6px;display:flex;gap:6px;flex-wrap:wrap}
 .chip{background:#eef7f0;color:#2f7d56;border:1px solid #cfe9d9;border-radius:999px;padding:2px 8px;font-size:.75rem}
 
 .cap{text-transform:capitalize}
-.ellipsis{max-width:600px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ellipsis{max-width:420px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 .sort-icon{font-size:.72rem;opacity:.35;margin-left:6px}
 .sort-icon[data-active="true"]{opacity:.9}
@@ -453,19 +504,14 @@ export default defineComponent({
 .pager .left{display:flex;align-items:center;gap:8px}
 .pager .right{display:flex;align-items:center;gap:8px}
 
-.btn-outline{padding:8px 12px;border-radius:8px;background:#fff;color:#4caf7a;border:2px solid #4caf7a;font-weight:700}
+.btn{padding:8px 12px;border-radius:8px;background:#4caf7a;color:#fff;border:0;font-weight:700;cursor:pointer}
+.btn:hover{background:#388e5a}
+.btn-outline{padding:8px 12px;border-radius:8px;background:#fff;color:#4caf7a;border:2px solid #4caf7a;font-weight:700;cursor:pointer}
 .btn-outline:hover{background:#4caf7a;color:#fff}
-.btn-danger{padding:8px 12px;border-radius:8px;background:#fff;color:#c0392b;border:2px solid #c0392b;font-weight:700}
+.btn-danger{padding:8px 12px;border-radius:8px;background:#fff;color:#c0392b;border:2px solid #c0392b;font-weight:700;cursor:pointer}
 .btn-danger:hover{background:#c0392b;color:#fff}
 .btn-outline.sm{padding:6px 10px;border-width:2px}
 
 .over{color:#c0392b;font-weight:700}
-
-/* 小屏回退：允许横向滚动避免布局拥挤 */
-@media (max-width:1200px){
-  .planner{ max-width:100%; padding:12px; }
-  .table-wrap{ overflow:auto; }
-  .table thead th, .table tbody td{ padding:10px 12px; font-size:14px; }
-  .ellipsis{ max-width:220px; }
-}
+@media (max-width: 960px){ .ellipsis{max-width:220px} }
 </style>
