@@ -4,8 +4,6 @@ const logger = require("firebase-functions/logger");
 const axios = require("axios");
 const sgMail = require("@sendgrid/mail");
 
-/* ---------------- CORS ---------------- */
-// 允许固定域名；另外自动放行所有 Cloudflare Pages 预览域名 (*.pages.dev)
 const allowOrigins = new Set([
   "http://localhost:5173",
   "https://nutrition-planner.pages.dev",
@@ -24,15 +22,14 @@ function setCors(req, res) {
   res.set("Access-Control-Allow-Origin", isAllowed(origin) ? origin : "*");
   res.set("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
   res.set("Access-Control-Allow-Headers", "Content-Type");
-  res.set("Vary", "Origin"); // 让 CDN/浏览器按 Origin 分开缓存
+  res.set("Vary", "Origin"); 
 }
 
-/* ---------------- 单一入口：api ---------------- */
 exports.api = onRequest(
   {
     region: "us-central1",
     secrets: ["SPOON_KEY", "SENDGRID_API_KEY", "FROM_EMAIL"],
-    cors: true, // v2 这里不会自动写 header，仍然自己 setCors 最保险
+    cors: true, 
   },
   async (req, res) => {
     setCors(req, res);
@@ -41,7 +38,6 @@ exports.api = onRequest(
     try {
       const path = String(req.query.path || "");
 
-      // 0) 健康检查 & 秘钥检查
       if (path === "debug") {
         const s = process.env.SPOON_KEY || "";
         const g = process.env.SENDGRID_API_KEY || "";
@@ -53,7 +49,6 @@ exports.api = onRequest(
         });
       }
 
-      // 1) 生成一天的餐单
       if (path === "mealplan") {
         const targetCalories = Number(req.query.targetCalories || 2000);
         const diet = String(req.query.diet || "").trim();
@@ -74,7 +69,6 @@ exports.api = onRequest(
         return res.json(data);
       }
 
-      // 2) 拉取菜谱详情（含营养）
       if (path === "recipeInfo") {
         const id = String(req.query.id || "");
         if (!id) return res.status(400).json({ error: "missing id" });
@@ -86,7 +80,6 @@ exports.api = onRequest(
         return res.json(data);
       }
 
-      // 3) 发送带 PDF 附件的邮件（前端以 POST 调用）
       if (path === "send-mail" && req.method === "POST") {
         const { to, subject, filename, contentBase64, html } = req.body || {};
         if (!to || !contentBase64) {
@@ -103,12 +96,12 @@ exports.api = onRequest(
         sgMail.setApiKey(process.env.SENDGRID_API_KEY);
         const msg = {
           to,
-          from: process.env.FROM_EMAIL, // 必须是 SendGrid 控制台里已验证的发件人邮箱
+          from: process.env.FROM_EMAIL, 
           subject: subject || "Your Nutrition Planner PDF",
           html: html || "<p>Please find the planner PDF attached.</p>",
           attachments: [
             {
-              content: contentBase64, // 只要纯 base64，不要 data: 前缀
+              content: contentBase64, 
               filename: filename || "planner.pdf",
               type: "application/pdf",
               disposition: "attachment",
