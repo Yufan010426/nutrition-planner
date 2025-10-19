@@ -1,4 +1,4 @@
-<!-- src/views/Map.vue (AA-ready) -->
+<!-- src/views/Map.vue (WCAG 2.1 AA ready, Leaflet marker fix) -->
 <template>
   <main id="main" class="map-page" role="main" aria-labelledby="map-title">
     <h1 id="map-title" class="sr-only">Find nearby grocery places and routes</h1>
@@ -24,7 +24,7 @@
           Use my location
         </button>
 
-        <button class="btn-outline" type="button" :disabled="loading" @click="searchHere">
+        <button class="btn-outline" type="button" :disabled="loading" @click="searchHere" aria-controls="results-title">
           Search this area
         </button>
       </div>
@@ -34,9 +34,7 @@
       </p>
 
       <div class="row wrap" role="group" aria-label="Search filters">
-        <label class="inline" for="radius">
-          Radius:
-        </label>
+        <label class="inline" for="radius">Radius:</label>
         <select id="radius" v-model.number="radiusMeters" class="select" aria-label="Search radius">
           <option :value="500">0.5 km</option>
           <option :value="1000">1 km</option>
@@ -139,6 +137,16 @@ import { onMounted, ref, watchEffect, nextTick } from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
+import marker2x from 'leaflet/dist/images/marker-icon-2x.png'
+import marker1x from 'leaflet/dist/images/marker-icon.png'
+import markerShadow from 'leaflet/dist/images/marker-shadow.png'
+
+delete L.Icon.Default.prototype._getIconUrl
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: marker2x,
+  iconUrl: marker1x,
+  shadowUrl: markerShadow
+})
 
 const query = ref('')
 const loading = ref(false)
@@ -161,10 +169,10 @@ const centerLatLng = ref({ lat: -37.8136, lng: 144.9631 })
 const centerText = ref('')
 const results = ref([])
 
-const travelMode = ref('walking')    
-const routeLayer = ref(null)         
-const routeInfo = ref('')             
-const userLatLng = ref(null)          
+const travelMode = ref('walking')      
+const routeLayer = ref(null)          
+const routeInfo = ref('')              
+const userLatLng = ref(null)           
 
 function setError(msg) {
   error.value = msg || ''
@@ -354,7 +362,7 @@ async function drawRouteTo(place) {
     if (!to) return
     const fromLL = userLatLng.value || map.getCenter()
     const from = { lat: fromLL.lat, lng: fromLL.lng }
-    const mode = travelMode.value // walking | cycling | driving
+    const mode = travelMode.value
 
     const url = `https://router.project-osrm.org/route/v1/${mode}/` +
       `${from.lng},${from.lat};${to.lng},${to.lat}?overview=full&geometries=geojson&steps=false`
@@ -368,9 +376,7 @@ async function drawRouteTo(place) {
     const geo = route.geometry
 
     if (routeLayer.value) { map.removeLayer(routeLayer.value); routeLayer.value = null }
-    // @ts-ignore
     routeLayer.value = L.geoJSON(geo, { style: { color: '#1f6d4d', weight: 5, opacity: 0.95 } }).addTo(map)
-    // @ts-ignore
     map.fitBounds(routeLayer.value.getBounds(), { padding: [30, 30] })
 
     const km = (route.distance / 1000).toFixed(2)
