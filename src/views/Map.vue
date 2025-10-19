@@ -135,7 +135,6 @@
 </template>
 
 <script setup>
-import { onMounted, ref, watchEffect, nextTick } from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import marker2x from 'leaflet/dist/images/marker-icon-2x.png'
