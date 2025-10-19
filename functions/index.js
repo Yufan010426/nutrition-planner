@@ -8,6 +8,7 @@ const allowOrigins = new Set([
   "http://localhost:5173",
   "https://nutrition-planner.pages.dev",
 ]);
+
 function isAllowed(origin) {
   if (!origin) return false;
   try {
@@ -64,6 +65,7 @@ exports.api = onRequest(
               exclude: exclude || undefined,
               apiKey: process.env.SPOON_KEY,
             },
+            timeout: 20000,
           }
         );
         return res.json(data);
@@ -75,7 +77,10 @@ exports.api = onRequest(
 
         const { data } = await axios.get(
           `https://api.spoonacular.com/recipes/${id}/information`,
-          { params: { includeNutrition: true, apiKey: process.env.SPOON_KEY } }
+          {
+            params: { includeNutrition: true, apiKey: process.env.SPOON_KEY },
+            timeout: 20000,
+          }
         );
         return res.json(data);
       }
@@ -112,6 +117,89 @@ exports.api = onRequest(
         await sgMail.send(msg);
         logger.info("send-mail ok", { to, filename });
         return res.json({ ok: true });
+      }
+
+      if (path === "overpass") {
+        const lat = Number(req.query.lat);
+        const lng = Number(req.query.lng);
+        const radius = Number(req.query.radius || 2000);
+        const tagsCsv = String(req.query.tags || "shop=supermarket");
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+          return res.status(400).json({ error: "missing/invalid lat,lng" });
+        }
+        const selectedTags = tagsCsv
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+
+        const buildQL = (lat, lng, radius, selectedTags) => {
+          const parts = selectedTags
+            .map(
+              (tag) => `
+            node(around:${radius},${lat},${lng})[${tag}];
+            way(around:${radius},${lat},${lng})[${tag}];
+            relation(around:${radius},${lat},${lng})[${tag}];
+          `
+            )
+            .join("\n");
+
+          return `
+            [out:json][timeout:25];
+            (
+              ${parts}
+            );
+            out center tags;
+          `;
+        };
+
+        const ql = buildQL(lat, lng, radius, selectedTags);
+
+        const endpoints = [
+          "https://overpass-api.de/api/interpreter",
+          "https://overpass.kumi.systems/api/interpreter",
+          "https://overpass.openstreetmap.ru/api/interpreter",
+          "https://overpass.nchc.org.tw/api/interpreter",
+          "https://overpass-api.nextzen.org/api/interpreter",
+        ];
+
+        let lastErr = null;
+        for (const ep of endpoints) {
+          try {
+            const { data } = await axios.post(
+              ep,
+              new URLSearchParams({ data: ql }).toString(),
+              {
+                headers: {
+                  "Content-Type":
+                    "application/x-www-form-urlencoded; charset=UTF-8",
+                  Accept: "application/json",
+                },
+                timeout: 25000,
+              }
+            );
+
+            if (data && data.elements) {
+              return res.json({ elements: data.elements, endpoint: ep });
+            }
+            return res.json({
+              elements: data?.elements || [],
+              endpoint: ep,
+            });
+          } catch (e) {
+            lastErr = e;
+            logger.warn(
+              "overpass fail @",
+              ep,
+              e?.response?.status || e?.code || e?.message
+            );
+
+          }
+        }
+
+        return res.status(502).json({
+          error: "overpass_unavailable",
+          detail: lastErr?.message || "all endpoints failed",
+        });
       }
 
       return res.status(404).json({ error: "unknown path" });
