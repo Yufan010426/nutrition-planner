@@ -138,6 +138,9 @@
 import { onMounted, ref, watchEffect, nextTick } from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import marker2x from 'leaflet/dist/images/marker-icon-2x.png'
+import marker1x from 'leaflet/dist/images/marker-icon.png'
+import markerShadow from 'leaflet/dist/images/marker-shadow.png'
 
 const query = ref('')
 const loading = ref(false)
